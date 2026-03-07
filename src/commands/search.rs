@@ -7,7 +7,7 @@ use crate::model::OpType;
 use crate::store;
 
 pub struct SearchArgs {
-    pub query: String,
+    pub query: Option<String>,
     pub agent: Option<String>,
     pub op_type: Option<OpType>,
     pub after: Option<String>,
@@ -27,7 +27,15 @@ pub fn run(args: SearchArgs, store_path: &Path) -> Result<(), Box<dyn std::error
         files: args.files,
     });
 
-    let results = bm25::rank(filtered, &args.query, args.limit);
+    let results = match args.query.as_deref().filter(|q| !q.is_empty()) {
+        Some(q) => bm25::rank(filtered, q, args.limit),
+        None => {
+            let mut obs = filtered;
+            obs.sort_by(|a, b| b.id.cmp(&a.id));
+            obs.truncate(args.limit);
+            obs
+        }
+    };
 
     if results.is_empty() {
         println!("no results");
@@ -74,9 +82,9 @@ mod tests {
         file
     }
 
-    fn args(query: &str) -> SearchArgs {
+    fn args(query: Option<&str>) -> SearchArgs {
         SearchArgs {
-            query: query.to_string(),
+            query: query.map(str::to_string),
             agent: None,
             op_type: None,
             after: None,
@@ -138,7 +146,7 @@ mod tests {
     #[test]
     fn no_matching_query_runs_ok() {
         let file = setup();
-        assert!(run(args("xyznonexistentterm"), file.path()).is_ok());
+        assert!(run(args(Some("xyznonexistentterm")), file.path()).is_ok());
     }
 
     #[test]
@@ -169,6 +177,58 @@ mod tests {
     #[test]
     fn empty_store_runs_ok() {
         let file = NamedTempFile::new().unwrap();
-        assert!(run(args("anything"), file.path()).is_ok());
+        assert!(run(args(Some("anything")), file.path()).is_ok());
+    }
+
+    #[test]
+    fn no_query_returns_newest_first() {
+        let file = setup();
+        let result = run(args(None), file.path());
+        assert!(result.is_ok());
+
+        // verify order independently: newest ULID first
+        let mut observations = store::load_from(file.path()).unwrap();
+        observations.sort_by(|a, b| b.id.cmp(&a.id));
+        assert_eq!(observations[0].timestamp[..10].to_string(), "2026-03-07");
+    }
+
+    #[test]
+    fn no_query_with_filter_returns_filtered_newest_first() {
+        let file = setup();
+        let result = run(
+            SearchArgs {
+                query: None,
+                agent: Some("backend-developer".to_string()),
+                op_type: None, after: None, before: None, files: None,
+                limit: 10,
+            },
+            file.path(),
+        );
+        assert!(result.is_ok());
+
+        let mut observations = store::load_from(file.path()).unwrap();
+        observations.retain(|o| o.agent == "backend-developer");
+        observations.sort_by(|a, b| b.id.cmp(&a.id));
+        assert_eq!(observations.len(), 2);
+        assert_eq!(&observations[0].timestamp[..10], "2026-03-01");
+    }
+
+    #[test]
+    fn no_query_respects_limit() {
+        let file = setup();
+        let result = run(
+            SearchArgs {
+                query: None,
+                agent: None, op_type: None, after: None, before: None, files: None,
+                limit: 2,
+            },
+            file.path(),
+        );
+        assert!(result.is_ok());
+
+        let mut observations = store::load_from(file.path()).unwrap();
+        observations.sort_by(|a, b| b.id.cmp(&a.id));
+        observations.truncate(2);
+        assert_eq!(observations.len(), 2);
     }
 }

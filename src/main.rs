@@ -45,9 +45,9 @@ enum Command {
         tags: String,
     },
 
-    /// Full-text search with optional filters
+    /// Full-text search with optional filters. Without a query, returns the most recent observations.
     Search {
-        query: String,
+        query: Option<String>,
 
         #[arg(long)]
         agent: Option<String>,
@@ -67,8 +67,9 @@ enum Command {
         #[arg(long)]
         files: Option<String>,
 
-        #[arg(long, default_value_t = 10)]
-        limit: usize,
+        /// Max results (defaults to config default_limit)
+        #[arg(long)]
+        limit: Option<usize>,
     },
 
     /// Retrieve full content of a specific observation by id prefix
@@ -116,7 +117,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         Command::Search { query, agent, op_type, after, before, files, limit } => {
             commands::search::run(
-                SearchArgs { query, agent, op_type, after, before, files, limit },
+                SearchArgs {
+                    query,
+                    agent,
+                    op_type,
+                    after,
+                    before,
+                    files,
+                    limit: limit.unwrap_or(config.default_limit),
+                },
                 &store_path,
             )?;
         }
