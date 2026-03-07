@@ -28,10 +28,13 @@ pub fn run(args: RecentArgs, store_path: &Path) -> Result<(), Box<dyn std::error
 
 pub fn print_compact(obs: &Observation) {
     let date = &obs.timestamp[..obs.timestamp.len().min(10)];
-    println!("[{}] {} | {} | {date}", obs.id, obs.agent, obs.op_type);
-    println!("  {}", obs.title);
+    println!("id:     {}", obs.id);
+    println!("agent:  {}", obs.agent);
+    println!("type:   {}", obs.op_type);
+    println!("date:   {date}");
+    println!("title:  {}", obs.title);
     if !obs.files.is_empty() {
-        println!("  {}", obs.files.join(", "));
+        println!("files:  {}", obs.files.join(", "));
     }
     println!();
 }
