@@ -70,14 +70,15 @@ mod tests {
 
     fn setup() -> NamedTempFile {
         let file = NamedTempFile::new().unwrap();
-        let observations = vec![
-            obs("backend-developer", OpType::Bugfix,    "2026-01-10", "Fixed N+1 query in Django", "Added select_related to queryset"),
-            obs("api-designer",      OpType::Decision,  "2026-02-15", "JWT auth via cookies",       "Use httpOnly cookies for JWT storage"),
-            obs("backend-developer", OpType::Discovery, "2026-03-01", "Redis cache invalidation",   "LRU policy causes stale reads"),
-            obs("orchestrator",      OpType::Summary,   "2026-03-07", "Session summary",            "Completed auth refactor and cache work"),
+        let data = [
+            ("backend-developer", OpType::Bugfix,    "2026-01-10", "Fixed N+1 query in Django", "Added select_related to queryset"),
+            ("api-designer",      OpType::Decision,  "2026-02-15", "JWT auth via cookies",       "Use httpOnly cookies for JWT storage"),
+            ("backend-developer", OpType::Discovery, "2026-03-01", "Redis cache invalidation",   "LRU policy causes stale reads"),
+            ("orchestrator",      OpType::Summary,   "2026-03-07", "Session summary",            "Completed auth refactor and cache work"),
         ];
-        for o in observations {
-            store::append_to(file.path(), &o).unwrap();
+        for (agent, op_type, date, title, content) in data {
+            store::append_to(file.path(), &obs(agent, op_type, date, title, content)).unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
         file
     }
@@ -183,13 +184,11 @@ mod tests {
     #[test]
     fn no_query_returns_newest_first() {
         let file = setup();
-        let result = run(args(None), file.path());
-        assert!(result.is_ok());
+        assert!(run(args(None), file.path()).is_ok());
 
-        // verify order independently: newest ULID first
         let mut observations = store::load_from(file.path()).unwrap();
         observations.sort_by(|a, b| b.id.cmp(&a.id));
-        assert_eq!(observations[0].timestamp[..10].to_string(), "2026-03-07");
+        assert_eq!(&observations[0].timestamp[..10], "2026-03-07");
     }
 
     #[test]
