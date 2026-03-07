@@ -1,19 +1,10 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::model::Observation;
 
 type StoreResult<T> = Result<T, Box<dyn std::error::Error>>;
-
-// --- path -------------------------------------------------------------------
-
-pub fn store_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home)
-        .join(".context-memory")
-        .join("store.ndjson")
-}
 
 fn ensure_parent(path: &Path) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
@@ -53,16 +44,6 @@ pub fn append_to(path: &Path, obs: &Observation) -> StoreResult<()> {
     writeln!(file, "{}", line)?;
 
     Ok(())
-}
-
-// --- public API (uses default store path) -----------------------------------
-
-pub fn load_all() -> StoreResult<Vec<Observation>> {
-    load_from(&store_path())
-}
-
-pub fn append(obs: &Observation) -> StoreResult<()> {
-    append_to(&store_path(), obs)
 }
 
 // ----------------------------------------------------------------------------
