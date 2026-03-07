@@ -27,9 +27,8 @@ pub fn run(args: RecentArgs, store_path: &Path) -> Result<(), Box<dyn std::error
 }
 
 pub fn print_compact(obs: &Observation) {
-    let short_id = &obs.id[..obs.id.len().min(6)];
     let date = &obs.timestamp[..obs.timestamp.len().min(10)];
-    println!("[{short_id}] {} | {} | {date}", obs.agent, obs.op_type);
+    println!("[{}] {} | {} | {date}", obs.id, obs.agent, obs.op_type);
     println!("  {}", obs.title);
     if !obs.files.is_empty() {
         println!("  {}", obs.files.join(", "));
