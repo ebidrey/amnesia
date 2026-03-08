@@ -12,6 +12,7 @@ Flags:
 
 - `--agent <name>` — your agent role name
 - `-n <number>` — number of observations to return (default: 10)
+- `--session <id>` — restrict to a specific session (uses `AMNESIA_SESSION` if set)
 
 Output — one block per observation, blank line between each:
 
@@ -50,7 +51,7 @@ tags:      <tag1>, <tag2>
 
 ```bash
 amnesia search "<topic>"
-amnesia search "<topic>" --agent "<name>" --type <type> --after <YYYY-MM-DD> --before <YYYY-MM-DD> --files "<path-substring>" --limit <n>
+amnesia search "<topic>" --agent "<name>" --type <type> --after <YYYY-MM-DD> --before <YYYY-MM-DD> --files "<path-substring>" --limit <n> --session <id>
 ```
 
 Flags:
@@ -62,6 +63,7 @@ Flags:
 - `--before <YYYY-MM-DD>` — on or before this date
 - `--files <substring>` — substring match on any file path in the observation
 - `--limit <n>` — max results (default: 10)
+- `--session <id>` — restrict to a specific session
 
 Output: same format as `recent`. Use `amnesia get <id-prefix>` to read full content.
 
@@ -82,7 +84,9 @@ amnesia save \
 ```
 
 Required: `--agent`, `--type`, `--title`, `--content`
-Optional: `--files`, `--tags`
+Optional: `--files`, `--tags`, `--session <id>`
+
+If the environment variable `AMNESIA_SESSION` is set, its value is automatically attached to every saved observation as `session_id`. You can also pass `--session <id>` explicitly to override it.
 
 Valid values for `--type` (enum — only these are accepted):
 
