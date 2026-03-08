@@ -18,7 +18,7 @@ use commands::sessions::SessionsArgs;
 use model::OpType;
 
 #[derive(Parser)]
-#[command(name = "amnesia", about = "Persistent memory CLI for AI agents")]
+#[command(name = "amnesia", about = "Persistent memory CLI for AI agents", version)]
 struct Cli {
     /// Project name (overrides AMNESIA_PROJECT env var)
     #[arg(long, global = true)]
