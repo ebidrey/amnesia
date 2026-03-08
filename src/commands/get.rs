@@ -28,6 +28,9 @@ fn print_full(obs: &Observation) {
     println!("{:<COL$}{}", "timestamp:", obs.timestamp);
     println!("{:<COL$}{}", "agent:", obs.agent);
     println!("{:<COL$}{}", "type:", obs.op_type);
+    if let Some(sid) = &obs.session_id {
+        println!("{:<COL$}{}", "session:", sid);
+    }
     println!("{:<COL$}{}", "title:", obs.title);
 
     // multi-line content: first line with label, rest indented
@@ -73,6 +76,7 @@ mod tests {
             content: "First line.\nSecond line.\nThird line.".to_string(),
             files: vec!["api/views.py".to_string(), "api/serializers.py".to_string()],
             tags: vec!["django".to_string(), "performance".to_string()],
+            session_id: None,
         }
     }
 
@@ -140,6 +144,7 @@ mod tests {
             content: "Found something.".to_string(),
             files: vec![],
             tags: vec![],
+            session_id: None,
         };
         store::append_to(file.path(), &obs).unwrap();
 

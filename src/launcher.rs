@@ -1,6 +1,9 @@
+use chrono::Utc;
 use dialoguer::{Input, Select};
+use ulid::Ulid;
 
-use crate::projects;
+use crate::model::Session;
+use crate::{config, projects, sessions};
 
 const KNOWN_ORCHESTRATORS: &[&str] = &["claude", "opencode", "cursor", "aider", "goose"];
 
@@ -74,11 +77,46 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let orchestrator = orchestrators[orch_selection];
 
-    // 6. Launch
+    // 6. Session selection
+    let sessions_path = config::project_sessions_path(&project_name);
+    let mut existing = sessions::load_from(&sessions_path).unwrap_or_default();
+    existing.sort_by(|a, b| b.id.cmp(&a.id));
+    existing.truncate(5);
+
+    let new_session_item = "+ New session".to_string();
+    let session_items: Vec<String> = std::iter::once(new_session_item.clone())
+        .chain(existing.iter().map(|s| {
+            let date = &s.started_at[..16].replace('T', " ");
+            format!("{}  {}  {}", date, s.orchestrator, &s.id[..8])
+        }))
+        .collect();
+
+    let session_selection = Select::new()
+        .with_prompt("Session:")
+        .items(&session_items)
+        .default(0)
+        .interact()?;
+
+    let session_id = if session_items[session_selection] == new_session_item {
+        let id = Ulid::new().to_string();
+        let session = Session {
+            id: id.clone(),
+            project: project_name.clone(),
+            orchestrator: orchestrator.to_string(),
+            started_at: Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        };
+        sessions::append_to(&sessions_path, &session)?;
+        id
+    } else {
+        existing[session_selection - 1].id.clone()
+    };
+
+    // 7. Launch
     eprintln!("-> Launching {orchestrator}...");
 
     let status = std::process::Command::new(orchestrator)
         .env("AMNESIA_PROJECT", &project_name)
+        .env("AMNESIA_SESSION", &session_id)
         .status()?;
 
     std::process::exit(status.code().unwrap_or(1));

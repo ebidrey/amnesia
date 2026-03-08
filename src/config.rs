@@ -36,6 +36,15 @@ pub fn project_store_path(project: &str) -> PathBuf {
         .join("store.ndjson")
 }
 
+pub fn project_sessions_path(project: &str) -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".context-memory")
+        .join("projects")
+        .join(project)
+        .join("sessions.ndjson")
+}
+
 pub fn load() -> Config {
     let config_path = config_path();
     if !config_path.exists() {
@@ -152,5 +161,25 @@ date_format   = "%d/%m/%Y"
         let a = project_store_path("alpha");
         let b = project_store_path("beta");
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn project_sessions_path_uses_project_name() {
+        let path = project_sessions_path("myproject");
+        assert!(path.ends_with(".context-memory/projects/myproject/sessions.ndjson"));
+    }
+
+    #[test]
+    fn project_sessions_path_different_projects_differ() {
+        let a = project_sessions_path("alpha");
+        let b = project_sessions_path("beta");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn project_sessions_path_differs_from_store_path() {
+        let sessions = project_sessions_path("myproject");
+        let store = project_store_path("myproject");
+        assert_ne!(sessions, store);
     }
 }

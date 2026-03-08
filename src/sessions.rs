@@ -2,9 +2,9 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::model::Observation;
+use crate::model::Session;
 
-type StoreResult<T> = Result<T, Box<dyn std::error::Error>>;
+type SessionsResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 fn ensure_parent(path: &Path) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
@@ -13,64 +13,54 @@ fn ensure_parent(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-// --- core (path-parametric, used by public API and tests) -------------------
-
-pub fn load_from(path: &Path) -> StoreResult<Vec<Observation>> {
+pub fn load_from(path: &Path) -> SessionsResult<Vec<Session>> {
     if !path.exists() {
         return Ok(vec![]);
     }
 
     let file = File::open(path)?;
     let reader = BufReader::new(file);
-    let mut observations = Vec::new();
+    let mut sessions = Vec::new();
 
     for line in reader.lines() {
         let line = line?;
         if line.is_empty() {
             continue;
         }
-        let obs: Observation = serde_json::from_str(&line)?;
-        observations.push(obs);
+        let session: Session = serde_json::from_str(&line)?;
+        sessions.push(session);
     }
 
-    Ok(observations)
+    Ok(sessions)
 }
 
-pub fn append_to(path: &Path, obs: &Observation) -> StoreResult<()> {
+pub fn append_to(path: &Path, session: &Session) -> SessionsResult<()> {
     ensure_parent(path)?;
 
     let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-    let line = serde_json::to_string(obs)?;
+    let line = serde_json::to_string(session)?;
     writeln!(file, "{}", line)?;
 
     Ok(())
 }
 
-// ----------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::OpType;
     use tempfile::NamedTempFile;
 
-    fn sample(id: &str, op_type: OpType) -> Observation {
-        Observation {
+    fn sample(id: &str) -> Session {
+        Session {
             id: id.to_string(),
-            timestamp: "2026-03-07T14:23:01Z".to_string(),
-            agent: "backend-developer".to_string(),
-            op_type,
-            title: "Test observation".to_string(),
-            content: "Some content".to_string(),
-            files: vec!["src/main.rs".to_string()],
-            tags: vec!["rust".to_string()],
-            session_id: None,
+            project: "myproject".to_string(),
+            orchestrator: "claude".to_string(),
+            started_at: "2026-03-08T22:05:00Z".to_string(),
         }
     }
 
     #[test]
     fn load_from_nonexistent_file_returns_empty() {
-        let path = Path::new("/tmp/amnesia_nonexistent_store_xyz.ndjson");
+        let path = Path::new("/tmp/amnesia_nonexistent_sessions_xyz.ndjson");
         let result = load_from(path).unwrap();
         assert!(result.is_empty());
     }
@@ -83,23 +73,23 @@ mod tests {
     }
 
     #[test]
-    fn append_then_load_single_observation() {
+    fn append_then_load_single_session() {
         let file = NamedTempFile::new().unwrap();
-        let obs = sample("01A", OpType::Bugfix);
+        let session = sample("01JNSESSION0000000000000AA");
 
-        append_to(file.path(), &obs).unwrap();
+        append_to(file.path(), &session).unwrap();
 
         let loaded = load_from(file.path()).unwrap();
         assert_eq!(loaded.len(), 1);
-        assert_eq!(loaded[0], obs);
+        assert_eq!(loaded[0], session);
     }
 
     #[test]
     fn append_preserves_insertion_order() {
         let file = NamedTempFile::new().unwrap();
-        let first = sample("01A", OpType::Decision);
-        let second = sample("01B", OpType::Bugfix);
-        let third = sample("01C", OpType::Summary);
+        let first = sample("01JNSESSION0000000000000AA");
+        let second = sample("01JNSESSION0000000000000BB");
+        let third = sample("01JNSESSION0000000000000CC");
 
         append_to(file.path(), &first).unwrap();
         append_to(file.path(), &second).unwrap();
@@ -107,9 +97,9 @@ mod tests {
 
         let loaded = load_from(file.path()).unwrap();
         assert_eq!(loaded.len(), 3);
-        assert_eq!(loaded[0].id, "01A");
-        assert_eq!(loaded[1].id, "01B");
-        assert_eq!(loaded[2].id, "01C");
+        assert_eq!(loaded[0].id, "01JNSESSION0000000000000AA");
+        assert_eq!(loaded[1].id, "01JNSESSION0000000000000BB");
+        assert_eq!(loaded[2].id, "01JNSESSION0000000000000CC");
     }
 
     #[test]
@@ -117,11 +107,11 @@ mod tests {
         use std::io::Write;
 
         let mut file = NamedTempFile::new().unwrap();
-        let obs = sample("01A", OpType::Discovery);
-        let line = serde_json::to_string(&obs).unwrap();
+        let session = sample("01JNSESSION0000000000000AA");
+        let line = serde_json::to_string(&session).unwrap();
 
         writeln!(file, "{}", line).unwrap();
-        writeln!(file).unwrap(); // blank line
+        writeln!(file).unwrap();
         writeln!(file, "{}", line).unwrap();
 
         let loaded = load_from(file.path()).unwrap();
@@ -142,21 +132,29 @@ mod tests {
     #[test]
     fn round_trip_all_fields_preserved() {
         let file = NamedTempFile::new().unwrap();
-        let obs = Observation {
-            id: "01HX4K2M3N5P6Q7R8S9T0U1V2W".to_string(),
-            timestamp: "2026-03-07T14:23:01Z".to_string(),
-            agent: "api-designer".to_string(),
-            op_type: OpType::Pattern,
-            title: "Repository pattern for all data access".to_string(),
-            content: "All DB access goes through repository classes.".to_string(),
-            files: vec!["src/repos/user.rs".to_string(), "src/repos/mod.rs".to_string()],
-            tags: vec!["architecture".to_string(), "pattern".to_string()],
-            session_id: None,
+        let session = Session {
+            id: "01JNSESSION0000000000000AA".to_string(),
+            project: "amnesia".to_string(),
+            orchestrator: "claude".to_string(),
+            started_at: "2026-03-08T22:05:00Z".to_string(),
         };
 
-        append_to(file.path(), &obs).unwrap();
+        append_to(file.path(), &session).unwrap();
         let loaded = load_from(file.path()).unwrap();
 
-        assert_eq!(loaded[0], obs);
+        assert_eq!(loaded[0], session);
+    }
+
+    #[test]
+    fn append_creates_parent_directories() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("projects").join("myproject").join("sessions.ndjson");
+        let session = sample("01JNSESSION0000000000000AA");
+
+        append_to(&path, &session).unwrap();
+
+        assert!(path.exists());
+        let loaded = load_from(&path).unwrap();
+        assert_eq!(loaded.len(), 1);
     }
 }

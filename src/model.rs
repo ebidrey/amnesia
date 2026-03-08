@@ -1,6 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Session {
+    pub id: String,
+    pub project: String,
+    pub orchestrator: String,
+    pub started_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OpType {
     Decision,
     Bugfix,
@@ -20,6 +28,8 @@ pub struct Observation {
     pub content: String,
     pub files: Vec<String>,
     pub tags: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
 }
 
 impl std::fmt::Display for OpType {
@@ -69,6 +79,7 @@ mod tests {
                 "api/serializers/product.py".to_string(),
             ],
             tags: vec!["postgresql".to_string(), "django".to_string()],
+            session_id: None,
         }
     }
 
@@ -138,5 +149,55 @@ mod tests {
             let restored: OpType = serde_json::from_str(&json).unwrap();
             assert_eq!(variant, &restored);
         }
+    }
+
+    #[test]
+    fn session_id_none_omitted_from_json() {
+        let obs = sample();
+        let json = serde_json::to_string(&obs).unwrap();
+        assert!(!json.contains("session_id"));
+    }
+
+    #[test]
+    fn session_id_some_included_in_json() {
+        let mut obs = sample();
+        obs.session_id = Some("01JNSESSION0000000000000AA".to_string());
+        let json = serde_json::to_string(&obs).unwrap();
+        assert!(json.contains(r#""session_id":"01JNSESSION0000000000000AA""#));
+    }
+
+    #[test]
+    fn observation_without_session_id_deserializes_to_none() {
+        let json = r#"{"id":"01HX4K2M3N5P6Q7R8S9T0U1V2W","timestamp":"2026-03-07T14:23:01Z","agent":"backend-developer","op_type":"Bugfix","title":"Fixed N+1 in product list","content":"ProductListView was issuing one query per seller.","files":["api/views/products.py","api/serializers/product.py"],"tags":["postgresql","django"]}"#;
+        let obs: Observation = serde_json::from_str(json).unwrap();
+        assert_eq!(obs.session_id, None);
+    }
+
+    #[test]
+    fn session_round_trip() {
+        let session = Session {
+            id: "01JNSESSION0000000000000AA".to_string(),
+            project: "amnesia".to_string(),
+            orchestrator: "claude".to_string(),
+            started_at: "2026-03-08T22:05:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        let restored: Session = serde_json::from_str(&json).unwrap();
+        assert_eq!(session, restored);
+    }
+
+    #[test]
+    fn session_fields_present_in_json() {
+        let session = Session {
+            id: "01JNSESSION0000000000000AA".to_string(),
+            project: "my-project".to_string(),
+            orchestrator: "claude".to_string(),
+            started_at: "2026-03-08T22:05:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        assert!(json.contains(r#""id":"01JNSESSION0000000000000AA""#));
+        assert!(json.contains(r#""project":"my-project""#));
+        assert!(json.contains(r#""orchestrator":"claude""#));
+        assert!(json.contains(r#""started_at":"2026-03-08T22:05:00Z""#));
     }
 }

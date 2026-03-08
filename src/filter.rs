@@ -3,9 +3,10 @@ use crate::model::{Observation, OpType};
 pub struct FilterOptions {
     pub agent: Option<String>,
     pub op_type: Option<OpType>,
-    pub after: Option<String>,  // YYYY-MM-DD
-    pub before: Option<String>, // YYYY-MM-DD
-    pub files: Option<String>,  // substring match against any path in files
+    pub after: Option<String>,       // YYYY-MM-DD
+    pub before: Option<String>,      // YYYY-MM-DD
+    pub files: Option<String>,       // substring match against any path in files
+    pub session_id: Option<String>,
 }
 
 pub fn apply(observations: Vec<Observation>, opts: &FilterOptions) -> Vec<Observation> {
@@ -48,6 +49,12 @@ fn matches_all(obs: &Observation, opts: &FilterOptions) -> bool {
         }
     }
 
+    if let Some(sid) = &opts.session_id {
+        if obs.session_id.as_deref() != Some(sid.as_str()) {
+            return false;
+        }
+    }
+
     true
 }
 
@@ -65,6 +72,7 @@ mod tests {
             content: "Some content".to_string(),
             files: files.iter().map(|s| s.to_string()).collect(),
             tags: vec![],
+            session_id: None,
         }
     }
 
@@ -75,6 +83,7 @@ mod tests {
             after: None,
             before: None,
             files: None,
+            session_id: None,
         }
     }
 
@@ -194,5 +203,34 @@ mod tests {
         let result = apply(sample_set(), &opts);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "03");
+    }
+
+    #[test]
+    fn filter_by_session_id() {
+        let sid = "01JNSESSION0000000000000AA".to_string();
+        let mut with_session = obs("05", "agent", OpType::Summary, "2026-03-08", &[]);
+        with_session.session_id = Some(sid.clone());
+
+        let mut data = sample_set();
+        data.push(with_session);
+
+        let opts = FilterOptions {
+            session_id: Some(sid.clone()),
+            ..all_opts()
+        };
+        let result = apply(data, &opts);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "05");
+        assert_eq!(result[0].session_id, Some(sid));
+    }
+
+    #[test]
+    fn filter_by_session_id_no_match_returns_empty() {
+        let opts = FilterOptions {
+            session_id: Some("01JNSESSION0000000000000XX".to_string()),
+            ..all_opts()
+        };
+        let result = apply(sample_set(), &opts);
+        assert!(result.is_empty());
     }
 }

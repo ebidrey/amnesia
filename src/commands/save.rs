@@ -13,6 +13,7 @@ pub struct SaveArgs {
     pub content: String,
     pub files: Vec<String>,
     pub tags: Vec<String>,
+    pub session_id: Option<String>,
 }
 
 pub fn run(args: SaveArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -25,6 +26,7 @@ pub fn run(args: SaveArgs, store_path: &Path) -> Result<(), Box<dyn std::error::
         content: args.content,
         files: args.files,
         tags: args.tags,
+        session_id: args.session_id,
     };
 
     store::append_to(store_path, &obs)?;
@@ -47,6 +49,7 @@ mod tests {
                 content: "Test content".to_string(),
                 files: vec!["src/main.rs".to_string()],
                 tags: vec!["rust".to_string()],
+                session_id: None,
             },
             file.path(),
         )
@@ -135,5 +138,36 @@ mod tests {
         use std::str::FromStr;
         assert!(OpType::from_str("unknown").is_err());
         assert!(OpType::from_str("").is_err());
+    }
+
+    #[test]
+    fn session_id_stored_when_provided() {
+        let file = NamedTempFile::new().unwrap();
+        let sid = "01JNSESSION0000000000000AA".to_string();
+        run(
+            SaveArgs {
+                agent: "test-agent".to_string(),
+                op_type: OpType::Summary,
+                title: "Session test".to_string(),
+                content: "content".to_string(),
+                files: vec![],
+                tags: vec![],
+                session_id: Some(sid.clone()),
+            },
+            file.path(),
+        )
+        .unwrap();
+
+        let observations = store::load_from(file.path()).unwrap();
+        assert_eq!(observations[0].session_id, Some(sid));
+    }
+
+    #[test]
+    fn session_id_none_when_not_provided() {
+        let file = NamedTempFile::new().unwrap();
+        run_save(&file, OpType::Discovery);
+
+        let observations = store::load_from(file.path()).unwrap();
+        assert_eq!(observations[0].session_id, None);
     }
 }

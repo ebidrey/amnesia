@@ -129,6 +129,7 @@ mod tests {
             content: content.to_string(),
             files: vec![],
             tags: tags.iter().map(|s| s.to_string()).collect(),
+            session_id: None,
         }
     }
 

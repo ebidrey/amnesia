@@ -14,6 +14,7 @@ pub struct SearchArgs {
     pub before: Option<String>,
     pub files: Option<String>,
     pub limit: usize,
+    pub session_id: Option<String>,
 }
 
 pub fn run(args: SearchArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -25,6 +26,7 @@ pub fn run(args: SearchArgs, store_path: &Path) -> Result<(), Box<dyn std::error
         after: args.after,
         before: args.before,
         files: args.files,
+        session_id: args.session_id,
     });
 
     let results = match args.query.as_deref().filter(|q| !q.is_empty()) {
@@ -65,6 +67,7 @@ mod tests {
             content: content.to_string(),
             files: vec!["src/lib.rs".to_string()],
             tags: vec![],
+            session_id: None,
         }
     }
 
@@ -92,6 +95,7 @@ mod tests {
             before: None,
             files: None,
             limit: 10,
+            session_id: None,
         }
     }
 
@@ -101,6 +105,7 @@ mod tests {
         let observations = store::load_from(file.path()).unwrap();
         let filtered = filter::apply(observations, &FilterOptions {
             agent: None, op_type: None, after: None, before: None, files: None,
+            session_id: None,
         });
         let results = bm25::rank(filtered, "django", 10);
         assert!(!results.is_empty());
@@ -114,6 +119,7 @@ mod tests {
         let filtered = filter::apply(observations, &FilterOptions {
             agent: Some("api-designer".to_string()),
             op_type: None, after: None, before: None, files: None,
+            session_id: None,
         });
         let results = bm25::rank(filtered, "JWT", 10);
         assert_eq!(results.len(), 1);
@@ -127,6 +133,7 @@ mod tests {
         let filtered = filter::apply(observations, &FilterOptions {
             op_type: Some(OpType::Bugfix),
             agent: None, after: None, before: None, files: None,
+            session_id: None,
         });
         let results = bm25::rank(filtered, "query", 10);
         assert!(results.iter().all(|o| o.op_type == OpType::Bugfix));
@@ -139,6 +146,7 @@ mod tests {
         let filtered = filter::apply(observations, &FilterOptions {
             after: Some("2026-03-01".to_string()),
             agent: None, op_type: None, before: None, files: None,
+            session_id: None,
         });
         let results = bm25::rank(filtered, "cache", 10);
         assert!(results.iter().all(|o| &o.timestamp[..10] >= "2026-03-01"));
@@ -156,6 +164,7 @@ mod tests {
         let observations = store::load_from(file.path()).unwrap();
         let filtered = filter::apply(observations, &FilterOptions {
             agent: None, op_type: None, after: None, before: None, files: None,
+            session_id: None,
         });
         // "a" matches most documents
         let results = bm25::rank(filtered, "auth cache query summary", 2);
@@ -168,6 +177,7 @@ mod tests {
         let observations = store::load_from(file.path()).unwrap();
         let filtered = filter::apply(observations, &FilterOptions {
             agent: None, op_type: None, after: None, before: None, files: None,
+            session_id: None,
         });
         let results = bm25::rank(filtered, "JWT cookies auth", 10);
         // JWT auth observation should rank first
@@ -200,6 +210,7 @@ mod tests {
                 agent: Some("backend-developer".to_string()),
                 op_type: None, after: None, before: None, files: None,
                 limit: 10,
+                session_id: None,
             },
             file.path(),
         );
@@ -220,6 +231,7 @@ mod tests {
                 query: None,
                 agent: None, op_type: None, after: None, before: None, files: None,
                 limit: 2,
+                session_id: None,
             },
             file.path(),
         );

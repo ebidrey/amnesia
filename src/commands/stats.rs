@@ -84,6 +84,7 @@ mod tests {
             content: "content".to_string(),
             files: vec![],
             tags: vec![],
+            session_id: None,
         }
     }
 

@@ -6,6 +6,7 @@ use crate::store;
 pub struct RecentArgs {
     pub n: usize,
     pub agent: Option<String>,
+    pub session_id: Option<String>,
 }
 
 pub fn run(args: RecentArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
@@ -13,6 +14,10 @@ pub fn run(args: RecentArgs, store_path: &Path) -> Result<(), Box<dyn std::error
 
     if let Some(agent) = &args.agent {
         observations.retain(|o| &o.agent == agent);
+    }
+
+    if let Some(sid) = &args.session_id {
+        observations.retain(|o| o.session_id.as_deref() == Some(sid));
     }
 
     // ULIDs are lexicographically sortable by creation time
@@ -32,6 +37,9 @@ pub fn print_compact(obs: &Observation) {
     println!("type:      {}", obs.op_type);
     println!("timestamp: {}", obs.timestamp);
     println!("title:     {}", obs.title);
+    if let Some(sid) = &obs.session_id {
+        println!("session:   {}", sid);
+    }
     if !obs.files.is_empty() {
         println!("files:     {}", obs.files.join(", "));
     }
@@ -55,6 +63,7 @@ mod tests {
             content: "content".to_string(),
             files: vec!["src/lib.rs".to_string()],
             tags: vec![],
+            session_id: None,
         }
     }
 
@@ -73,7 +82,7 @@ mod tests {
             make_obs("01JNCCCC", "agent", OpType::Discovery, "2026-03-01"),
         ]);
 
-        let args = RecentArgs { n: 10, agent: None };
+        let args = RecentArgs { n: 10, agent: None, session_id: None };
         let mut observations = store::load_from(file.path()).unwrap();
         observations.sort_by(|a, b| b.id.cmp(&a.id));
 
@@ -112,7 +121,7 @@ mod tests {
             make_obs("01JNCCCC", "backend-developer", OpType::Summary,  "2026-03-01"),
         ]);
 
-        let args = RecentArgs { n: 10, agent: Some("backend-developer".to_string()) };
+        let args = RecentArgs { n: 10, agent: Some("backend-developer".to_string()), session_id: None };
         run(args, file.path()).unwrap();
 
         let mut observations = store::load_from(file.path()).unwrap();
@@ -123,7 +132,7 @@ mod tests {
     #[test]
     fn empty_store_returns_ok() {
         let file = NamedTempFile::new().unwrap();
-        let args = RecentArgs { n: 10, agent: None };
+        let args = RecentArgs { n: 10, agent: None, session_id: None };
         assert!(run(args, file.path()).is_ok());
     }
 
@@ -140,5 +149,28 @@ mod tests {
         observations.truncate(100);
 
         assert_eq!(observations.len(), 2);
+    }
+
+    #[test]
+    fn filters_by_session_id() {
+        let file = NamedTempFile::new().unwrap();
+        let sid = "01JNSESSION0000000000000AA".to_string();
+
+        let mut obs_with_session = make_obs("01JNCCCC", "agent", OpType::Summary, "2026-03-01");
+        obs_with_session.session_id = Some(sid.clone());
+
+        write_observations(&file, &[
+            make_obs("01JNAAAA", "agent", OpType::Bugfix,   "2026-01-01"),
+            make_obs("01JNBBBB", "agent", OpType::Decision, "2026-02-01"),
+            obs_with_session,
+        ]);
+
+        let args = RecentArgs { n: 10, agent: None, session_id: Some(sid.clone()) };
+        run(args, file.path()).unwrap();
+
+        let mut observations = store::load_from(file.path()).unwrap();
+        observations.retain(|o| o.session_id.as_deref() == Some(&sid));
+        assert_eq!(observations.len(), 1);
+        assert_eq!(observations[0].id, "01JNCCCC");
     }
 }

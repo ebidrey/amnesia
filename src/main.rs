@@ -5,6 +5,7 @@ mod filter;
 mod launcher;
 mod model;
 mod projects;
+mod sessions;
 mod store;
 
 use clap::{Parser, Subcommand};
@@ -13,6 +14,7 @@ use commands::get::GetArgs;
 use commands::recent::RecentArgs;
 use commands::save::SaveArgs;
 use commands::search::SearchArgs;
+use commands::sessions::SessionsArgs;
 use model::OpType;
 
 #[derive(Parser)]
@@ -45,6 +47,9 @@ enum Command {
         /// Comma-separated tags
         #[arg(long, default_value = "")]
         tags: String,
+
+        #[arg(long)]
+        session: Option<String>,
     },
 
     /// Full-text search with optional filters. Without a query, returns the most recent observations.
@@ -72,6 +77,9 @@ enum Command {
         /// Max results (defaults to config default_limit)
         #[arg(long)]
         limit: Option<usize>,
+
+        #[arg(long)]
+        session: Option<String>,
     },
 
     /// Retrieve full content of a specific observation by id prefix
@@ -84,10 +92,19 @@ enum Command {
 
         #[arg(long)]
         agent: Option<String>,
+
+        #[arg(long)]
+        session: Option<String>,
     },
 
     /// Show store statistics
     Stats,
+
+    /// List sessions for the current project
+    Sessions {
+        #[arg(short = 'n', default_value_t = 10)]
+        n: usize,
+    },
 }
 
 fn main() {
@@ -109,7 +126,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let store_path = resolve_store_path(&config);
 
     match cli.command.unwrap() {
-        Command::Save { agent, op_type, title, content, files, tags } => {
+        Command::Save { agent, op_type, title, content, files, tags, session } => {
+            let session_id = session.or_else(|| std::env::var("AMNESIA_SESSION").ok().filter(|s| !s.is_empty()));
             commands::save::run(
                 SaveArgs {
                     agent,
@@ -118,12 +136,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     content,
                     files: split_csv(&files),
                     tags: split_csv(&tags),
+                    session_id,
                 },
                 &store_path,
             )?;
         }
 
-        Command::Search { query, agent, op_type, after, before, files, limit } => {
+        Command::Search { query, agent, op_type, after, before, files, limit, session } => {
             commands::search::run(
                 SearchArgs {
                     query,
@@ -133,6 +152,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     before,
                     files,
                     limit: limit.unwrap_or(config.default_limit),
+                    session_id: session,
                 },
                 &store_path,
             )?;
@@ -142,12 +162,17 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             commands::get::run(GetArgs { id_prefix: id }, &store_path)?;
         }
 
-        Command::Recent { n, agent } => {
-            commands::recent::run(RecentArgs { n, agent }, &store_path)?;
+        Command::Recent { n, agent, session } => {
+            commands::recent::run(RecentArgs { n, agent, session_id: session }, &store_path)?;
         }
 
         Command::Stats => {
             commands::stats::run(&store_path)?;
+        }
+
+        Command::Sessions { n } => {
+            let sessions_path = resolve_sessions_path()?;
+            commands::sessions::run(SessionsArgs { n }, &sessions_path)?;
         }
     }
 
@@ -161,6 +186,13 @@ fn resolve_store_path(config: &config::Config) -> std::path::PathBuf {
         }
     }
     config.store_path_expanded()
+}
+
+fn resolve_sessions_path() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    match std::env::var("AMNESIA_PROJECT") {
+        Ok(p) if !p.is_empty() => Ok(config::project_sessions_path(&p)),
+        _ => Err("sessions require AMNESIA_PROJECT to be set".into()),
+    }
 }
 
 fn split_csv(s: &str) -> Vec<String> {
