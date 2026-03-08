@@ -11,7 +11,7 @@ Goldfish: Often cited for having very poor, short-term memory.
 
 ## What is this?
 
-Every time you start a new session with an AI coding agent, it starts completely blank. It has no idea what decisions were made last week, what bugs were fixed yesterday, or what patterns the team agreed on. It will rediscover the same things, make the same mistakes, and ask the same questions — over and over.
+Every time you start a new session with an AI coding agent, it starts completely blank. It has no idea what decisions were made last week, what bugs were fixed yesterday, or what patterns the team agreed on. It will rediscover the same things, make the same mistakes, and ask the same questions - over and over.
 
 `amnesia` is a small command-line tool that gives agents a place to write down what they learn and look it up later. It is a single binary, writes to plain text files, and requires no running process. Agents call it through the shell, the same way they run `git` or `grep`.
 
@@ -21,7 +21,7 @@ That is the whole thing.
 
 ## The unit of memory: an observation
 
-Everything stored in `amnesia` is an **observation** — a structured note that captures one meaningful event from a session.
+Everything stored in `amnesia` is an **observation** - a structured note that captures one meaningful event from a session.
 
 ```
 id:        01JNAAAA0000000000000000AA        unique ID (ULID, time-sortable)
@@ -37,7 +37,7 @@ tags:      auth, jwt, timezone              free-form tags (optional)
 session:   01KK7V16Q9V8NMSYP7JZS1F2BX      session that produced it (optional)
 ```
 
-`search` and `recent` show a compact view — id, agent, type, timestamp, and title. The `content` field is intentionally omitted to keep token usage low. Use `amnesia get <id>` to read the full content of any observation.
+`search` and `recent` show a compact view - id, agent, type, timestamp, and title. The `content` field is intentionally omitted to keep token usage low. Use `amnesia get <id>` to read the full content of any observation.
 
 An observation has six types, each with a clear meaning:
 
@@ -100,7 +100,7 @@ amnesia
 
 It prompts you to select a **project** (from `~/.context-memory/projects.toml`) and an **orchestrator** (Claude, OpenCode, Cursor, Aider, Goose), then launches the orchestrator with `AMNESIA_PROJECT` and `AMNESIA_SESSION` set in the environment.
 
-From that point on, every `amnesia save` inside that orchestrator session is automatically scoped to the project and tagged with the session ID — no extra flags required.
+From that point on, every `amnesia save` inside that orchestrator session is automatically scoped to the project and tagged with the session ID - no extra flags required.
 
 ---
 
@@ -135,7 +135,7 @@ amnesia
 
 ## Commands
 
-### `save` — write an observation
+### `save` - write an observation
 
 ```bash
 amnesia save \
@@ -165,7 +165,7 @@ The launcher sets `AMNESIA_SESSION` automatically, so you normally do not need t
 
 ---
 
-### `search` — find relevant observations
+### `search` - find relevant observations
 
 Full-text search across titles, content, and tags using BM25 ranking. Omit the query to get the newest observations first.
 
@@ -189,7 +189,7 @@ amnesia search --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 amnesia search
 ```
 
-Output is compact — titles only, no content:
+Output is compact - titles only, no content:
 ```
 id:        01JNAAAA0000000000000000AA
 agent:     backend-developer
@@ -213,7 +213,7 @@ amnesia get 01JNAAAA        # read full content only for the relevant ones
 
 ---
 
-### `get` — read a full observation
+### `get` - read a full observation
 
 ```bash
 amnesia get 01JNAAAA
@@ -237,9 +237,9 @@ tags:      auth, jwt, timezone
 
 ---
 
-### `recent` — last N observations
+### `recent` - last N observations
 
-Same compact format as `search` — titles only. Use `amnesia get <id>` for full content.
+Same compact format as `search` - titles only. Use `amnesia get <id>` for full content.
 
 ```bash
 # last 10 across all agents
@@ -254,7 +254,7 @@ amnesia recent --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 
 ---
 
-### `sessions` — list recent sessions
+### `sessions` - list recent sessions
 
 Requires `AMNESIA_PROJECT` to be set.
 
@@ -275,7 +275,7 @@ Sessions are stored in `~/.context-memory/projects/<name>/sessions.ndjson`, sepa
 
 ---
 
-### `stats` — store overview
+### `stats` - store overview
 
 ```bash
 amnesia stats
@@ -299,7 +299,7 @@ The real value comes from teaching your AI agent to use `amnesia` consistently. 
 ```markdown
 ## Memory
 
-You have access to `amnesia` — a persistent memory CLI for storing and
+You have access to `amnesia` - a persistent memory CLI for storing and
 retrieving observations across sessions.
 
 **At the start of every session:** run `amnesia recent -n 10` to recover
@@ -392,7 +392,7 @@ amnesia search --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 
 ## Configuration
 
-Optional config at `~/.context-memory/config.toml`. All values have defaults — the file does not need to exist.
+Optional config at `~/.context-memory/config.toml`. All values have defaults - the file does not need to exist.
 
 ```toml
 store_path    = "~/.context-memory/store.ndjson"
@@ -405,7 +405,7 @@ default_limit = 10
 
 ### Observations
 
-Stored as NDJSON — one JSON object per line:
+Stored as NDJSON - one JSON object per line:
 
 ```json
 {"id":"01JNAAAA0000000000000000AA","timestamp":"2026-03-07T14:23:01Z","agent":"backend-developer","op_type":"Bugfix","title":"JWT expiry check used local time instead of UTC","content":"...","files":["src/auth/jwt.rs"],"tags":["auth","jwt","timezone"]}
@@ -427,10 +427,10 @@ Stored separately in `~/.context-memory/projects/<name>/sessions.ndjson`:
 
 ### Properties
 
-- IDs are [ULIDs](https://github.com/ulid/spec) — lexicographically sortable, unique, collision-free.
+- IDs are [ULIDs](https://github.com/ulid/spec) - lexicographically sortable, unique, collision-free.
 - Append-only. `save` only adds a line, never rewrites the file.
-- Append is atomic on most filesystems — safe for concurrent writes from parallel agents.
-- No automatic pruning. The file grows over time. Back it up, inspect it, `grep` it — it is just text.
+- Append is atomic on most filesystems - safe for concurrent writes from parallel agents.
+- No automatic pruning. The file grows over time. Back it up, inspect it, `grep` it - it is just text.
 
 ---
 
@@ -452,7 +452,7 @@ When no query is given, results are returned newest-first by timestamp.
 
 ## Seeding with example data
 
-The repo includes `seed.sh` — a script that populates the store with 100 realistic observations across five agents (backend developer, API designer, frontend developer, DevOps engineer, orchestrator). Useful for testing search behavior and getting a feel for how a populated store looks.
+The repo includes `seed.sh` - a script that populates the store with 100 realistic observations across five agents (backend developer, API designer, frontend developer, DevOps engineer, orchestrator). Useful for testing search behavior and getting a feel for how a populated store looks.
 
 ```bash
 cargo build --release
