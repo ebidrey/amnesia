@@ -1,11 +1,11 @@
 # amnesia
 
-> Persistent memory for AI agents that forget everything when the session ends.
+> Your AI agent has amnesia. This search engine fixes it.
+> Writable and searchable persistent memory for AI agents
 
-The name is the joke. Your AI agent has amnesia. This fixes it.
 
 <img width="1408" height="768" alt="Gemini_Generated_Image_jccrnpjccrnpjccr" src="https://github.com/user-attachments/assets/48b77804-cbff-4595-834e-86e672048bd4" />
-Goldfish: Often cited for having very poor, short-term memory.
+> Goldfish: Often cited for having very poor, short-term memory.
 
 ---
 
