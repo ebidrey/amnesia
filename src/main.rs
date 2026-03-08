@@ -20,6 +20,10 @@ use model::OpType;
 #[derive(Parser)]
 #[command(name = "amnesia", about = "Persistent memory CLI for AI agents")]
 struct Cli {
+    /// Project name (overrides AMNESIA_PROJECT env var)
+    #[arg(long, global = true)]
+    project: Option<String>,
+
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -123,7 +127,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let config = config::load();
-    let store_path = resolve_store_path(&config);
+    let store_path = resolve_store_path(&config, cli.project.as_deref());
 
     match cli.command.unwrap() {
         Command::Save { agent, op_type, title, content, files, tags, session } => {
@@ -171,7 +175,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Command::Sessions { n } => {
-            let sessions_path = resolve_sessions_path()?;
+            let sessions_path = resolve_sessions_path(cli.project.as_deref())?;
             commands::sessions::run(SessionsArgs { n }, &sessions_path)?;
         }
     }
@@ -179,19 +183,23 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn resolve_store_path(config: &config::Config) -> std::path::PathBuf {
-    if let Ok(project) = std::env::var("AMNESIA_PROJECT") {
-        if !project.is_empty() {
-            return config::project_store_path(&project);
-        }
+fn resolve_store_path(config: &config::Config, project: Option<&str>) -> std::path::PathBuf {
+    let project = project
+        .map(str::to_string)
+        .or_else(|| std::env::var("AMNESIA_PROJECT").ok().filter(|s| !s.is_empty()));
+    match project {
+        Some(p) => config::project_store_path(&p),
+        None => config.store_path_expanded(),
     }
-    config.store_path_expanded()
 }
 
-fn resolve_sessions_path() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    match std::env::var("AMNESIA_PROJECT") {
-        Ok(p) if !p.is_empty() => Ok(config::project_sessions_path(&p)),
-        _ => Err("sessions require AMNESIA_PROJECT to be set".into()),
+fn resolve_sessions_path(project: Option<&str>) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    let project = project
+        .map(str::to_string)
+        .or_else(|| std::env::var("AMNESIA_PROJECT").ok().filter(|s| !s.is_empty()));
+    match project {
+        Some(p) => Ok(config::project_sessions_path(&p)),
+        None => Err("sessions require AMNESIA_PROJECT to be set (or pass --project)".into()),
     }
 }
 
