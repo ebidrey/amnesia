@@ -209,3 +209,95 @@ fn split_csv(s: &str) -> Vec<String> {
         .filter(|s| !s.is_empty())
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    fn default_config() -> config::Config {
+        config::Config::default()
+    }
+
+    // Serialize all tests that mutate AMNESIA_PROJECT to avoid races in parallel test runs.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Save and restore AMNESIA_PROJECT around a closure, holding ENV_LOCK for the duration.
+    fn with_env_project<F: FnOnce()>(value: Option<&str>, f: F) {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let saved = std::env::var("AMNESIA_PROJECT").ok();
+        unsafe {
+            match value {
+                Some(v) => std::env::set_var("AMNESIA_PROJECT", v),
+                None => std::env::remove_var("AMNESIA_PROJECT"),
+            }
+        }
+        f();
+        unsafe {
+            match saved {
+                Some(v) => std::env::set_var("AMNESIA_PROJECT", v),
+                None => std::env::remove_var("AMNESIA_PROJECT"),
+            }
+        }
+    }
+
+    #[test]
+    fn store_path_uses_flag_project() {
+        let path = resolve_store_path(&default_config(), Some("myproject"));
+        assert!(path.ends_with(".context-memory/projects/myproject/store.ndjson"));
+    }
+
+    #[test]
+    fn store_path_falls_back_to_global_when_no_project() {
+        with_env_project(None, || {
+            let path = resolve_store_path(&default_config(), None);
+            assert!(path.ends_with("store.ndjson"));
+            assert!(!path.to_string_lossy().contains("/projects/"));
+        });
+    }
+
+    #[test]
+    fn store_path_flag_takes_precedence_over_env_var() {
+        with_env_project(Some("env-project"), || {
+            let path = resolve_store_path(&default_config(), Some("flag-project"));
+            assert!(path.ends_with(".context-memory/projects/flag-project/store.ndjson"));
+        });
+    }
+
+    #[test]
+    fn store_path_uses_env_var_when_no_flag() {
+        with_env_project(Some("env-project"), || {
+            let path = resolve_store_path(&default_config(), None);
+            assert!(path.ends_with(".context-memory/projects/env-project/store.ndjson"));
+        });
+    }
+
+    #[test]
+    fn sessions_path_uses_flag_project() {
+        let path = resolve_sessions_path(Some("myproject")).unwrap();
+        assert!(path.ends_with(".context-memory/projects/myproject/sessions.ndjson"));
+    }
+
+    #[test]
+    fn sessions_path_errors_without_project() {
+        with_env_project(None, || {
+            assert!(resolve_sessions_path(None).is_err());
+        });
+    }
+
+    #[test]
+    fn sessions_path_uses_env_var_when_no_flag() {
+        with_env_project(Some("env-project"), || {
+            let path = resolve_sessions_path(None).unwrap();
+            assert!(path.ends_with(".context-memory/projects/env-project/sessions.ndjson"));
+        });
+    }
+
+    #[test]
+    fn sessions_path_flag_takes_precedence_over_env_var() {
+        with_env_project(Some("env-project"), || {
+            let path = resolve_sessions_path(Some("flag-project")).unwrap();
+            assert!(path.ends_with(".context-memory/projects/flag-project/sessions.ndjson"));
+        });
+    }
+}
