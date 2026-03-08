@@ -27,6 +27,15 @@ impl Config {
     }
 }
 
+pub fn project_store_path(project: &str) -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".context-memory")
+        .join("projects")
+        .join(project)
+        .join("store.ndjson")
+}
+
 pub fn load() -> Config {
     let config_path = config_path();
     if !config_path.exists() {
@@ -130,5 +139,18 @@ date_format   = "%d/%m/%Y"
         let config = Config::default();
         let path = config.store_path_expanded();
         assert!(path.ends_with(".context-memory/store.ndjson"));
+    }
+
+    #[test]
+    fn project_store_path_uses_project_name() {
+        let path = project_store_path("myproject");
+        assert!(path.ends_with(".context-memory/projects/myproject/store.ndjson"));
+    }
+
+    #[test]
+    fn project_store_path_different_projects_differ() {
+        let a = project_store_path("alpha");
+        let b = project_store_path("beta");
+        assert_ne!(a, b);
     }
 }

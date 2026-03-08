@@ -106,7 +106,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let config = config::load();
-    let store_path = config.store_path_expanded();
+    let store_path = resolve_store_path(&config);
 
     match cli.command.unwrap() {
         Command::Save { agent, op_type, title, content, files, tags } => {
@@ -152,6 +152,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn resolve_store_path(config: &config::Config) -> std::path::PathBuf {
+    if let Ok(project) = std::env::var("AMNESIA_PROJECT") {
+        if !project.is_empty() {
+            return config::project_store_path(&project);
+        }
+    }
+    config.store_path_expanded()
 }
 
 fn split_csv(s: &str) -> Vec<String> {
