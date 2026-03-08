@@ -5,7 +5,7 @@
 
 
 <img width="1408" height="768" alt="Gemini_Generated_Image_jccrnpjccrnpjccr" src="https://github.com/user-attachments/assets/48b77804-cbff-4595-834e-86e672048bd4" />
-> Goldfish: Often cited for having very poor, short-term memory.
+Goldfish: Often cited for having very poor, short-term memory.
 
 ---
 
