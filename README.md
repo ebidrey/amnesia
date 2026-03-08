@@ -13,7 +13,7 @@ Goldfish: Often cited for having very poor, short-term memory.
 
 Every time you start a new session with an AI coding agent, it starts completely blank. It has no idea what decisions were made last week, what bugs were fixed yesterday, or what patterns the team agreed on. It will rediscover the same things, make the same mistakes, and ask the same questions — over and over.
 
-`amnesia` is a small command-line tool that gives agents a place to write down what they learn and look it up later. It is a single binary, writes to a plain text file, and requires no running process. Agents call it through the shell, the same way they run `git` or `grep`.
+`amnesia` is a small command-line tool that gives agents a place to write down what they learn and look it up later. It is a single binary, writes to plain text files, and requires no running process. Agents call it through the shell, the same way they run `git` or `grep`.
 
 That is the whole thing.
 
@@ -34,6 +34,7 @@ content:   chrono::Local::now() was compared against the exp claim which is
            UTC-5 environments.
 files:     src/auth/jwt.rs                  files involved (optional)
 tags:      auth, jwt, timezone              free-form tags (optional)
+session:   01KK7V16Q9V8NMSYP7JZS1F2BX      session that produced it (optional)
 ```
 
 `search` and `recent` show a compact view — id, agent, type, timestamp, and title. The `content` field is intentionally omitted to keep token usage low. Use `amnesia get <id>` to read the full content of any observation.
@@ -58,7 +59,7 @@ That's the data model. One observation per event, one line in a file.
 **Simple by design.**
 
 - One binary. No daemon, no server, no MCP, no database engine.
-- One file: `~/.context-memory/store.ndjson` — plain JSON, one observation per line. Open it in any editor.
+- Plain text files: NDJSON, one observation per line. Open it in any editor.
 - Agents call it via shell. Zero framework overhead, zero extra context tokens consumed.
 - BM25 full-text search built in. No embeddings, no vector store, no API key needed.
 - Human-readable storage. You can `grep` it, `cat` it, back it up with `cp`, inspect it with `jq`.
@@ -89,6 +90,49 @@ The store file is created automatically on the first `amnesia save`.
 
 ---
 
+## Launcher
+
+Run `amnesia` with no subcommand to open the interactive TUI launcher:
+
+```bash
+amnesia
+```
+
+It prompts you to select a **project** (from `~/.context-memory/projects.toml`) and an **orchestrator** (Claude, OpenCode, Cursor, Aider, Goose), then launches the orchestrator with `AMNESIA_PROJECT` and `AMNESIA_SESSION` set in the environment.
+
+From that point on, every `amnesia save` inside that orchestrator session is automatically scoped to the project and tagged with the session ID — no extra flags required.
+
+---
+
+## Project-scoped storage
+
+When `AMNESIA_PROJECT` is set, all commands read and write to a project-specific store instead of the global one:
+
+```
+~/.context-memory/projects/<name>/store.ndjson
+```
+
+The global store (`~/.context-memory/store.ndjson`) is still used when `AMNESIA_PROJECT` is not set.
+
+You can select a project in three ways, in order of precedence:
+
+```bash
+# 1. --project flag (any subcommand)
+amnesia search --project myproject "authentication"
+amnesia --project myproject recent -n 5
+amnesia --project myproject sessions
+
+# 2. AMNESIA_PROJECT environment variable
+AMNESIA_PROJECT=myproject amnesia search "authentication"
+
+# 3. The launcher sets it automatically before starting the orchestrator
+amnesia
+```
+
+`--project` takes precedence over `AMNESIA_PROJECT` when both are present.
+
+---
+
 ## Commands
 
 ### `save` — write an observation
@@ -110,6 +154,15 @@ saved 01JNAAAA0000000000000000AA
 
 `--files` and `--tags` are optional. `--agent`, `--type`, `--title`, and `--content` are required.
 
+**Session tagging:** if `AMNESIA_SESSION` is set in the environment, it is automatically attached to the observation as `session_id`. You can also pass `--session <id>` explicitly:
+
+```bash
+amnesia save --agent "backend-developer" --type bugfix --title "..." --content "..." \
+  --session 01KK7V16Q9V8NMSYP7JZS1F2BX
+```
+
+The launcher sets `AMNESIA_SESSION` automatically, so you normally do not need to pass it by hand.
+
 ---
 
 ### `search` — find relevant observations
@@ -128,6 +181,9 @@ amnesia search "deployment" --after 2026-01-01 --before 2026-03-01
 
 # filter by affected file
 amnesia search --files "src/auth"
+
+# filter by session
+amnesia search --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 
 # return newest, no query needed
 amnesia search
@@ -191,7 +247,31 @@ amnesia recent
 
 # last 5 from a specific agent
 amnesia recent --agent backend-developer -n 5
+
+# last 10 from a specific session
+amnesia recent --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 ```
+
+---
+
+### `sessions` — list recent sessions
+
+Requires `AMNESIA_PROJECT` to be set.
+
+```bash
+AMNESIA_PROJECT=myproject amnesia sessions
+AMNESIA_PROJECT=myproject amnesia sessions -n 5
+```
+
+Output:
+```
+id:           01KK7V16Q9V8NMSYP7JZS1F2BX
+project:      myproject
+orchestrator: claude
+started_at:   2026-03-08T22:05:00Z
+```
+
+Sessions are stored in `~/.context-memory/projects/<name>/sessions.ndjson`, separate from observations.
 
 ---
 
@@ -234,6 +314,12 @@ discovering something non-obvious, establishing a pattern, or ending a session.
 sessions left relevant context.
 
 **Never skip saving** after a session with meaningful output.
+```
+
+Or install the included Claude Code skill:
+
+```bash
+cp -r skills/amnesia ~/.claude/skills/amnesia
 ```
 
 ### What agents should save
@@ -297,6 +383,9 @@ amnesia search --type warning
 
 # what touched the auth module?
 amnesia search --files "src/auth"
+
+# what happened in this session?
+amnesia search --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 ```
 
 ---
@@ -314,16 +403,34 @@ default_limit = 10
 
 ## Storage format
 
-The store is an NDJSON file — one JSON object per line, one observation per line:
+### Observations
+
+Stored as NDJSON — one JSON object per line:
 
 ```json
 {"id":"01JNAAAA0000000000000000AA","timestamp":"2026-03-07T14:23:01Z","agent":"backend-developer","op_type":"Bugfix","title":"JWT expiry check used local time instead of UTC","content":"...","files":["src/auth/jwt.rs"],"tags":["auth","jwt","timezone"]}
 ```
 
+`session_id` is included only when the observation was saved with a session:
+
+```json
+{"id":"01KK7VFQ...","timestamp":"2026-03-08T23:10:59Z","agent":"backend-developer","op_type":"Bugfix","title":"...","content":"...","files":[],"tags":[],"session_id":"01KK7V16Q9V8NMSYP7JZS1F2BX"}
+```
+
+### Sessions
+
+Stored separately in `~/.context-memory/projects/<name>/sessions.ndjson`:
+
+```json
+{"id":"01KK7V16Q9V8NMSYP7JZS1F2BX","project":"myproject","orchestrator":"claude","started_at":"2026-03-08T22:05:00Z"}
+```
+
+### Properties
+
 - IDs are [ULIDs](https://github.com/ulid/spec) — lexicographically sortable, unique, collision-free.
 - Append-only. `save` only adds a line, never rewrites the file.
 - Append is atomic on most filesystems — safe for concurrent writes from parallel agents.
-- No automatic pruning in v0.1. The file grows over time. Back it up, inspect it, `grep` it — it is just text.
+- No automatic pruning. The file grows over time. Back it up, inspect it, `grep` it — it is just text.
 
 ---
 
@@ -363,16 +470,20 @@ The codebase is intentionally small. Every module has inline `#[cfg(test)]` unit
 ```
 src/
   main.rs          CLI entry point (clap)
-  model.rs         Observation struct + OpType enum
-  store.rs         NDJSON read / append (path-parametric)
+  model.rs         Observation + Session structs, OpType enum
+  store.rs         NDJSON read / append for observations (path-parametric)
+  sessions.rs      NDJSON read / append for sessions
   bm25.rs          BM25 implementation (~100 lines)
-  filter.rs        agent / type / date / files filters
-  config.rs        config.toml loading
+  filter.rs        agent / type / date / files / session filters
+  config.rs        config.toml loading, project path helpers
+  launcher.rs      TUI launcher: project + orchestrator selector
+  projects.rs      projects.toml loading
   commands/
     save.rs
     search.rs
     get.rs
     recent.rs
+    sessions.rs
     stats.rs
 ```
 
@@ -380,8 +491,6 @@ src/
 cargo test
 cargo build --release
 ```
-
-Things explicitly out of scope for v0.1: MCP server, HTTP API, vector search, per-project stores, delete/prune, TUI. Keep it simple.
 
 ---
 
