@@ -2,7 +2,9 @@ mod bm25;
 mod commands;
 mod config;
 mod filter;
+mod launcher;
 mod model;
+mod projects;
 mod store;
 
 use clap::{Parser, Subcommand};
@@ -17,7 +19,7 @@ use model::OpType;
 #[command(name = "amnesia", about = "Persistent memory CLI for AI agents")]
 struct Cli {
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Subcommand)]
@@ -97,10 +99,16 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
+
+    if cli.command.is_none() {
+        launcher::run()?;
+        return Ok(());
+    }
+
     let config = config::load();
     let store_path = config.store_path_expanded();
 
-    match cli.command {
+    match cli.command.unwrap() {
         Command::Save { agent, op_type, title, content, files, tags } => {
             commands::save::run(
                 SaveArgs {

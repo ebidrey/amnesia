@@ -10,6 +10,7 @@ toml       = "0.8"
 ulid       = "1"
 chrono     = "0.4"
 clap       = { version = "4", features = ["derive"] }
+dialoguer  = "0.11"
 
 [[bin]]
 name = "amnesia"
