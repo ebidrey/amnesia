@@ -98,7 +98,7 @@ Run `amnesia` with no subcommand to open the interactive TUI launcher:
 amnesia
 ```
 
-It prompts you to select a **project** (from `~/.context-memory/projects.toml`) and an **orchestrator** (Claude, OpenCode, Cursor, Aider, Goose), then launches the orchestrator with `AMNESIA_PROJECT` and `AMNESIA_SESSION` set in the environment.
+It prompts you to select a **project** (from `~/.amnesia/projects.toml`) and an **orchestrator** (Claude, OpenCode, Cursor, Aider, Goose), then launches the orchestrator with `AMNESIA_PROJECT` and `AMNESIA_SESSION` set in the environment.
 
 From that point on, every `amnesia save` inside that orchestrator session is automatically scoped to the project and tagged with the session ID - no extra flags required.
 
@@ -109,10 +109,10 @@ From that point on, every `amnesia save` inside that orchestrator session is aut
 When `AMNESIA_PROJECT` is set, all commands read and write to a project-specific store instead of the global one:
 
 ```
-~/.context-memory/projects/<name>/store.ndjson
+~/.amnesia/projects/<name>/store.ndjson
 ```
 
-The global store (`~/.context-memory/store.ndjson`) is still used when `AMNESIA_PROJECT` is not set.
+The global store (`~/.amnesia/store.ndjson`) is still used when `AMNESIA_PROJECT` is not set.
 
 You can select a project in three ways, in order of precedence:
 
@@ -271,7 +271,7 @@ orchestrator: claude
 started_at:   2026-03-08T22:05:00Z
 ```
 
-Sessions are stored in `~/.context-memory/projects/<name>/sessions.ndjson`, separate from observations.
+Sessions are stored in `~/.amnesia/projects/<name>/sessions.ndjson`, separate from observations.
 
 ---
 
@@ -284,11 +284,11 @@ amnesia projects
 Output:
 ```
 project: amnesia
-store:   /Users/you/.context-memory/projects/amnesia/store.ndjson
+store:   /Users/you/.amnesia/projects/amnesia/store.ndjson
 obs:     42
 
 project: philosophy
-store:   /Users/you/.context-memory/projects/philosophy/store.ndjson
+store:   /Users/you/.amnesia/projects/philosophy/store.ndjson
 obs:     0
 ```
 
@@ -308,7 +308,7 @@ agents:   backend-developer (23), api-designer (12), orchestrator (12)
 types:    decision (18), bugfix (14), discovery (9), pattern (4), warning (2)
 oldest:   2026-01-15
 newest:   2026-03-07
-file:     ~/.context-memory/store.ndjson (84 KB)
+file:     ~/.amnesia/store.ndjson (84 KB)
 ```
 
 ---
@@ -413,10 +413,10 @@ amnesia search --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 
 ## Configuration
 
-Optional config at `~/.context-memory/config.toml`. All values have defaults - the file does not need to exist.
+Optional config at `~/.amnesia/config.toml`. All values have defaults - the file does not need to exist.
 
 ```toml
-store_path    = "~/.context-memory/store.ndjson"
+store_path    = "~/.amnesia/store.ndjson"
 default_limit = 10
 ```
 
@@ -440,7 +440,7 @@ Stored as NDJSON - one JSON object per line:
 
 ### Sessions
 
-Stored separately in `~/.context-memory/projects/<name>/sessions.ndjson`:
+Stored separately in `~/.amnesia/projects/<name>/sessions.ndjson`:
 
 ```json
 {"id":"01KK7V16Q9V8NMSYP7JZS1F2BX","project":"myproject","orchestrator":"claude","started_at":"2026-03-08T22:05:00Z"}

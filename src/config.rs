@@ -14,7 +14,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            store_path: "~/.context-memory/store.ndjson".to_string(),
+            store_path: "~/.amnesia/store.ndjson".to_string(),
             default_limit: 10,
             date_format: "%Y-%m-%d".to_string(),
         }
@@ -29,13 +29,13 @@ impl Config {
 
 pub fn projects_dir() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".context-memory").join("projects")
+    PathBuf::from(home).join(".amnesia").join("projects")
 }
 
 pub fn project_store_path(project: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(home)
-        .join(".context-memory")
+        .join(".amnesia")
         .join("projects")
         .join(project)
         .join("store.ndjson")
@@ -44,7 +44,7 @@ pub fn project_store_path(project: &str) -> PathBuf {
 pub fn project_sessions_path(project: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(home)
-        .join(".context-memory")
+        .join(".amnesia")
         .join("projects")
         .join(project)
         .join("sessions.ndjson")
@@ -66,7 +66,7 @@ pub fn load() -> Config {
 
 fn config_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".context-memory").join("config.toml")
+    PathBuf::from(home).join(".amnesia").join("config.toml")
 }
 
 fn expand_tilde(path: &str) -> PathBuf {
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn defaults_are_correct() {
         let config = Config::default();
-        assert_eq!(config.store_path, "~/.context-memory/store.ndjson");
+        assert_eq!(config.store_path, "~/.amnesia/store.ndjson");
         assert_eq!(config.default_limit, 10);
         assert_eq!(config.date_format, "%Y-%m-%d");
     }
@@ -97,7 +97,7 @@ mod tests {
         let toml = r#"default_limit = 25"#;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.default_limit, 25);
-        assert_eq!(config.store_path, "~/.context-memory/store.ndjson");
+        assert_eq!(config.store_path, "~/.amnesia/store.ndjson");
         assert_eq!(config.date_format, "%Y-%m-%d");
     }
 
@@ -116,7 +116,7 @@ date_format   = "%d/%m/%Y"
 
     #[test]
     fn load_returns_default_when_file_missing() {
-        // config_path() points to ~/.context-memory/config.toml which may or
+        // config_path() points to ~/.amnesia/config.toml which may or
         // may not exist; we test the fallback path via toml::from_str directly.
         let config: Config = toml::from_str("").unwrap();
         assert_eq!(config.default_limit, 10);
@@ -135,10 +135,10 @@ date_format   = "%d/%m/%Y"
     #[test]
     fn expand_tilde_replaces_home() {
         let home = std::env::var("HOME").unwrap();
-        let expanded = expand_tilde("~/.context-memory/store.ndjson");
+        let expanded = expand_tilde("~/.amnesia/store.ndjson");
         assert_eq!(
             expanded,
-            PathBuf::from(&home).join(".context-memory/store.ndjson")
+            PathBuf::from(&home).join(".amnesia/store.ndjson")
         );
     }
 
@@ -152,13 +152,13 @@ date_format   = "%d/%m/%Y"
     fn store_path_expanded_returns_pathbuf() {
         let config = Config::default();
         let path = config.store_path_expanded();
-        assert!(path.ends_with(".context-memory/store.ndjson"));
+        assert!(path.ends_with(".amnesia/store.ndjson"));
     }
 
     #[test]
     fn project_store_path_uses_project_name() {
         let path = project_store_path("myproject");
-        assert!(path.ends_with(".context-memory/projects/myproject/store.ndjson"));
+        assert!(path.ends_with(".amnesia/projects/myproject/store.ndjson"));
     }
 
     #[test]
@@ -171,7 +171,7 @@ date_format   = "%d/%m/%Y"
     #[test]
     fn project_sessions_path_uses_project_name() {
         let path = project_sessions_path("myproject");
-        assert!(path.ends_with(".context-memory/projects/myproject/sessions.ndjson"));
+        assert!(path.ends_with(".amnesia/projects/myproject/sessions.ndjson"));
     }
 
     #[test]

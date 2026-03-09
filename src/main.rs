@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn store_path_uses_flag_project() {
         let path = resolve_store_path(&default_config(), Some("myproject"));
-        assert!(path.ends_with(".context-memory/projects/myproject/store.ndjson"));
+        assert!(path.ends_with(".amnesia/projects/myproject/store.ndjson"));
     }
 
     #[test]
@@ -267,7 +267,7 @@ mod tests {
     fn store_path_flag_takes_precedence_over_env_var() {
         with_env_project(Some("env-project"), || {
             let path = resolve_store_path(&default_config(), Some("flag-project"));
-            assert!(path.ends_with(".context-memory/projects/flag-project/store.ndjson"));
+            assert!(path.ends_with(".amnesia/projects/flag-project/store.ndjson"));
         });
     }
 
@@ -275,14 +275,14 @@ mod tests {
     fn store_path_uses_env_var_when_no_flag() {
         with_env_project(Some("env-project"), || {
             let path = resolve_store_path(&default_config(), None);
-            assert!(path.ends_with(".context-memory/projects/env-project/store.ndjson"));
+            assert!(path.ends_with(".amnesia/projects/env-project/store.ndjson"));
         });
     }
 
     #[test]
     fn sessions_path_uses_flag_project() {
         let path = resolve_sessions_path(Some("myproject")).unwrap();
-        assert!(path.ends_with(".context-memory/projects/myproject/sessions.ndjson"));
+        assert!(path.ends_with(".amnesia/projects/myproject/sessions.ndjson"));
     }
 
     #[test]
@@ -296,7 +296,7 @@ mod tests {
     fn sessions_path_uses_env_var_when_no_flag() {
         with_env_project(Some("env-project"), || {
             let path = resolve_sessions_path(None).unwrap();
-            assert!(path.ends_with(".context-memory/projects/env-project/sessions.ndjson"));
+            assert!(path.ends_with(".amnesia/projects/env-project/sessions.ndjson"));
         });
     }
 
@@ -304,7 +304,7 @@ mod tests {
     fn sessions_path_flag_takes_precedence_over_env_var() {
         with_env_project(Some("env-project"), || {
             let path = resolve_sessions_path(Some("flag-project")).unwrap();
-            assert!(path.ends_with(".context-memory/projects/flag-project/sessions.ndjson"));
+            assert!(path.ends_with(".amnesia/projects/flag-project/sessions.ndjson"));
         });
     }
 }

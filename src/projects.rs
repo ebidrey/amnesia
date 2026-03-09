@@ -16,7 +16,7 @@ pub struct ProjectsConfig {
 
 pub fn projects_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".context-memory").join("projects.toml")
+    PathBuf::from(home).join(".amnesia").join("projects.toml")
 }
 
 // --- core (path-parametric, used by public API and tests) -------------------
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn projects_path_ends_with_expected_suffix() {
         let path = projects_path();
-        assert!(path.ends_with(".context-memory/projects.toml"));
+        assert!(path.ends_with(".amnesia/projects.toml"));
     }
 
     #[test]
