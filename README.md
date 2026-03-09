@@ -275,6 +275,27 @@ Sessions are stored in `~/.context-memory/projects/<name>/sessions.ndjson`, sepa
 
 ---
 
+### `projects` - list all projects
+
+```bash
+amnesia projects
+```
+
+Output:
+```
+project: amnesia
+store:   /Users/you/.context-memory/projects/amnesia/store.ndjson
+obs:     42
+
+project: philosophy
+store:   /Users/you/.context-memory/projects/philosophy/store.ndjson
+obs:     0
+```
+
+Projects are listed alphabetically. Each entry shows the project name, the full path to its `store.ndjson`, and the number of observations it contains. If no projects have been created yet, prints `no projects found`.
+
+---
+
 ### `stats` - store overview
 
 ```bash
@@ -483,6 +504,7 @@ src/
     search.rs
     get.rs
     recent.rs
+    projects.rs
     sessions.rs
     stats.rs
 ```
