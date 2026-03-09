@@ -471,19 +471,6 @@ When no query is given, results are returned newest-first by timestamp.
 
 ---
 
-## Seeding with example data
-
-The repo includes `seed.sh` - a script that populates the store with 100 realistic observations across five agents (backend developer, API designer, frontend developer, DevOps engineer, orchestrator). Useful for testing search behavior and getting a feel for how a populated store looks.
-
-```bash
-cargo build --release
-bash seed.sh
-amnesia stats
-amnesia search "authentication"
-```
-
----
-
 ## Contributing
 
 The codebase is intentionally small. Every module has inline `#[cfg(test)]` unit tests.
