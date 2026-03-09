@@ -104,6 +104,9 @@ enum Command {
     /// Show store statistics
     Stats,
 
+    /// List all projects and their store paths
+    Projects,
+
     /// List sessions for the current project
     Sessions {
         #[arg(short = 'n', default_value_t = 10)]
@@ -172,6 +175,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         Command::Stats => {
             commands::stats::run(&store_path)?;
+        }
+
+        Command::Projects => {
+            commands::projects::run(&config::projects_dir())?;
         }
 
         Command::Sessions { n } => {

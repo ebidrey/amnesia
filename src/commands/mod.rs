@@ -1,4 +1,5 @@
 pub mod get;
+pub mod projects;
 pub mod recent;
 pub mod save;
 pub mod search;

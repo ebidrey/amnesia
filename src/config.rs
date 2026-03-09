@@ -27,6 +27,11 @@ impl Config {
     }
 }
 
+pub fn projects_dir() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home).join(".context-memory").join("projects")
+}
+
 pub fn project_store_path(project: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(home)
