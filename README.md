@@ -4,7 +4,7 @@
 > Writable and searchable persistent memory for AI agents
 
 
-<img width="1408" height="768" alt="Gemini_Generated_Image_jccrnpjccrnpjccr" src="https://github.com/user-attachments/assets/48b77804-cbff-4595-834e-86e672048bd4" />
+<img width="1000" height="701" alt="Screenshot 2026-03-09 at 8 23 29 AM" src="https://github.com/user-attachments/assets/0ab9c2de-f33d-48fb-b364-c6593b546b7f" />
 Goldfish: Often cited for having very poor, short-term memory.
 
 ---
