@@ -10,7 +10,8 @@ toml       = "0.8"
 ulid       = "1"
 chrono     = "0.4"
 clap       = { version = "4", features = ["derive"] }
-dialoguer  = "0.11"
+ratatui    = "0.29"
+crossterm  = "0.28"
 
 [[bin]]
 name = "amnesia"

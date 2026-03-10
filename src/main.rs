@@ -2,11 +2,11 @@ mod bm25;
 mod commands;
 mod config;
 mod filter;
-mod launcher;
 mod model;
 mod projects;
 mod sessions;
 mod store;
+mod tui;
 
 use clap::{Parser, Subcommand};
 
@@ -125,7 +125,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     if cli.command.is_none() {
-        launcher::run()?;
+        tui::run()?;
         return Ok(());
     }
 
