@@ -9,6 +9,7 @@ const KNOWN_ORCHESTRATORS: &[&str] = &["claude", "opencode", "cursor", "aider", 
 pub enum Tab {
     Launch,
     Databases,
+    About,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

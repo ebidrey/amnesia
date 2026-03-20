@@ -6,6 +6,74 @@ use ratatui::{
     Frame,
 };
 
+// Standing pose sprite — 21×24
+// 0=white  1=black  2=dark-blue  3=sky-blue  4=skin  5=transparent
+const MEGAMAN: [[u8; 21]; 24] = [
+    [5,5,5,5,5,5,5,5,5,5,1,1,1,5,5,5,5,5,5,5,5],
+    [5,5,5,5,5,5,5,5,1,1,1,3,3,1,5,5,5,5,5,5,5],
+    [5,5,5,5,5,5,5,1,2,2,2,1,3,3,1,5,5,5,5,5,5],
+    [5,5,5,5,5,5,1,2,2,2,2,2,1,1,1,1,5,5,5,5,5],
+    [5,5,5,5,5,5,1,2,2,2,2,2,1,3,3,2,1,5,5,5,5],
+    [5,5,5,5,5,1,3,2,2,2,2,2,2,1,1,2,1,5,5,5,5],
+    [5,5,5,5,5,1,3,2,2,4,0,0,0,2,2,0,1,5,5,5,5],
+    [5,5,5,5,5,1,3,2,4,0,0,1,1,4,1,0,1,5,5,5,5],
+    [5,5,5,5,5,5,1,2,4,0,0,1,1,4,1,0,1,5,5,5,5],
+    [5,5,5,5,5,1,1,2,4,4,0,0,0,4,0,4,1,5,5,5,5],
+    [5,5,5,1,1,3,3,1,2,4,1,1,1,1,4,1,1,1,5,5,5],
+    [5,5,2,1,3,3,3,3,1,4,4,4,4,4,1,3,3,2,1,5,5],
+    [5,5,1,2,2,3,3,3,3,1,1,1,1,1,3,3,2,2,1,5,5],
+    [5,1,2,2,2,3,1,3,3,3,3,3,3,1,3,2,2,2,1,5,5],
+    [5,1,2,2,1,1,1,3,3,3,3,3,3,1,1,1,2,2,1,5,5],
+    [5,1,2,2,2,1,1,3,3,3,3,3,3,1,1,2,2,2,1,5,5],
+    [5,1,2,2,2,1,1,2,2,2,2,2,2,1,1,2,2,2,1,5,5],
+    [5,5,1,1,1,5,1,2,2,2,2,2,2,1,5,1,1,1,5,5,5],
+    [5,5,5,5,5,1,3,3,2,2,2,2,2,3,3,1,5,5,5,5,5],
+    [5,5,5,5,1,3,3,3,3,2,2,2,3,3,3,3,1,5,5,5,5],
+    [5,5,5,1,1,2,2,2,3,3,1,3,3,2,2,2,1,1,5,5,5],
+    [5,1,1,2,2,2,2,2,2,1,5,1,2,2,2,2,2,1,1,5,5],
+    [1,2,2,2,2,2,2,2,1,5,5,5,1,2,2,2,2,2,2,1,5],
+    [1,1,1,1,1,1,1,1,1,5,5,5,1,1,1,1,1,1,1,1,5],
+];
+
+fn pixel_color(n: u8) -> Color {
+    match n {
+        0 => Color::Rgb(255, 255, 255),
+        1 => Color::Rgb(0, 0, 0),
+        2 => Color::Rgb(43, 99, 195),
+        3 => Color::Rgb(73, 203, 233),
+        4 => Color::Rgb(241, 201, 163),
+        _ => Color::Reset,
+    }
+}
+
+fn draw_about(f: &mut Frame, area: Rect) {
+    // Each pixel is 2 chars wide; art is 21×2=42 wide, 24 tall
+    let art_w: u16 = 21 * 2;
+    let art_h: u16 = 24;
+    let x0 = area.x + area.width.saturating_sub(art_w) / 2;
+    let y0 = area.y + area.height.saturating_sub(art_h) / 2;
+
+    let buf = f.buffer_mut();
+    for (row_i, row) in MEGAMAN.iter().enumerate() {
+        let y = y0 + row_i as u16;
+        if y >= area.bottom() {
+            break;
+        }
+        for (col_i, &px) in row.iter().enumerate() {
+            if px == 5 {
+                continue;
+            }
+            let color = pixel_color(px);
+            for dx in 0u16..2 {
+                let x = x0 + col_i as u16 * 2 + dx;
+                if let Some(cell) = buf.cell_mut((x, y)) {
+                    cell.set_symbol("█").set_fg(color);
+                }
+            }
+        }
+    }
+}
+
 use super::app::{App, LaunchStep, Tab};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
@@ -21,6 +89,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     match app.active_tab {
         Tab::Launch => draw_launch(f, app, chunks[1]),
         Tab::Databases => draw_databases(f, app, chunks[1]),
+        Tab::About => draw_about(f, chunks[1]),
     }
 
     draw_status(f, app, chunks[2]);
@@ -31,10 +100,11 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_tabs(f: &mut Frame, app: &App, area: Rect) {
-    let titles = vec![Line::from("Launch"), Line::from("Databases")];
+    let titles = vec![Line::from("Launch"), Line::from("Databases"), Line::from("About")];
     let selected = match app.active_tab {
         Tab::Launch => 0usize,
         Tab::Databases => 1,
+        Tab::About => 2,
     };
     let tabs = Tabs::new(titles)
         .select(selected)
@@ -120,7 +190,8 @@ fn draw_status(f: &mut Frame, app: &App, area: Rect) {
     } else {
         let hint = match app.active_tab {
             Tab::Launch => "↑↓ navigate  Enter select  Esc back  → Databases  q quit",
-            Tab::Databases => "↑↓ navigate  d delete  ← Launch  q quit",
+            Tab::Databases => "↑↓ navigate  d delete  ← Launch  → About  q quit",
+            Tab::About => "← Databases  q quit",
         };
         (hint, Style::default().fg(Color::DarkGray))
     };

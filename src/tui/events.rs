@@ -16,6 +16,7 @@ pub fn handle(key: KeyEvent, app: &mut App) {
     match app.active_tab {
         Tab::Launch => handle_launch(key, app),
         Tab::Databases => handle_databases(key, app),
+        Tab::About => handle_about(key, app),
     }
 }
 
@@ -120,6 +121,10 @@ fn handle_databases(key: KeyEvent, app: &mut App) {
             app.active_tab = Tab::Launch;
             app.status_msg = None;
         }
+        KeyCode::Right => {
+            app.active_tab = Tab::About;
+            app.status_msg = None;
+        }
         KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
         KeyCode::Up => {
             if app.db_cursor > 0 {
@@ -139,6 +144,17 @@ fn handle_databases(key: KeyEvent, app: &mut App) {
                     Some(format!("Delete '{name}'?  y = confirm  any other key = cancel"));
             }
         }
+        _ => {}
+    }
+}
+
+fn handle_about(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Left => {
+            app.active_tab = Tab::Databases;
+            app.status_msg = None;
+        }
+        KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
         _ => {}
     }
 }
