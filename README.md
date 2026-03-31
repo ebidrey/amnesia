@@ -34,7 +34,7 @@ content:   chrono::Local::now() was compared against the exp claim which is
            UTC-5 environments.
 files:     src/auth/jwt.rs                  files involved (optional)
 tags:      auth, jwt, timezone              free-form tags (optional)
-session:   01KK7V16Q9V8NMSYP7JZS1F2BX      session that produced it (optional)
+session_id: 01KK7V16Q9V8NMSYP7JZS1F2BX      session that produced it (optional)
 ```
 
 `search` and `recent` show a compact view - id, agent, type, timestamp, and title. The `content` field is intentionally omitted to keep token usage low. Use `amnesia get <id>` to read the full content of any observation.
