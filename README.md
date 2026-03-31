@@ -75,8 +75,15 @@ The goal is a tool so simple that there is no reason not to use it. Every featur
 ```bash
 git clone https://github.com/ebidrey/amnesia
 cd amnesia
-cargo build --release
-cp target/release/amnesia /usr/local/bin/amnesia
+cargo install --path .
+```
+
+This installs the binary to `~/.cargo/bin/amnesia`.
+
+If `amnesia` is not found after install, add Cargo bin to your PATH:
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
 ```
 
 ### Verify
@@ -84,6 +91,14 @@ cp target/release/amnesia /usr/local/bin/amnesia
 ```bash
 amnesia --version
 amnesia stats
+```
+
+Tested on 2026-03-31 in this repository with:
+
+```bash
+cargo install --path .
+~/.cargo/bin/amnesia --version
+~/.cargo/bin/amnesia stats
 ```
 
 The store file is created automatically on the first `amnesia save`.
