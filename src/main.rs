@@ -112,6 +112,9 @@ enum Command {
         #[arg(short = 'n', default_value_t = 10)]
         n: usize,
     },
+
+    /// Encrypt all plaintext lines in the store
+    Migrate,
 }
 
 fn main() {
@@ -192,6 +195,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Command::Sessions { n } => {
             let sessions_path = resolve_sessions_path(cli.project.as_deref())?;
             commands::sessions::run(SessionsArgs { n }, &sessions_path)?;
+        }
+
+        Command::Migrate => {
+            commands::migrate::run(&store_path, &identity_path)?;
         }
     }
 
