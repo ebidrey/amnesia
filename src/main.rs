@@ -131,8 +131,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = config::load();
     let store_path = resolve_store_path(&config, cli.project.as_deref());
+    let command = cli.command.unwrap();
 
-    match cli.command.unwrap() {
+    commands::encrypt::ensure_identity(&config::age_identity_path())?;
+
+    match command {
         Command::Save { agent, op_type, title, content, files, tags, session } => {
             let session_id = session.or_else(|| std::env::var("AMNESIA_SESSION").ok().filter(|s| !s.is_empty()));
             commands::save::run(

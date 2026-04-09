@@ -32,6 +32,14 @@ pub fn projects_dir() -> PathBuf {
     PathBuf::from(home).join(".amnesia").join("projects")
 }
 
+pub fn age_identity_path() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".amnesia")
+        .join("keys")
+        .join("amnesia.key")
+}
+
 pub fn project_store_path(project: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(home)

@@ -1,3 +1,4 @@
+pub mod encrypt;
 pub mod get;
 pub mod projects;
 pub mod recent;
