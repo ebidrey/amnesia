@@ -53,6 +53,7 @@ pub fn load_encrypted(path: &Path, identity_path: &Path) -> StoreResult<Vec<Obse
         return Ok(vec![]);
     }
 
+    let identity = crate::commands::encrypt::load_identity(identity_path)?;
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut observations = Vec::new();
@@ -66,7 +67,7 @@ pub fn load_encrypted(path: &Path, identity_path: &Path) -> StoreResult<Vec<Obse
         let json = if line.starts_with('{') {
             line // backward compat: plaintext JSON
         } else {
-            crate::commands::encrypt::decrypt_line(&line, identity_path)?
+            crate::commands::encrypt::decrypt_with(&line, &identity)?
         };
 
         let obs: Observation = serde_json::from_str(&json)?;
@@ -83,9 +84,10 @@ pub fn append_encrypted(
 ) -> StoreResult<()> {
     ensure_parent(path)?;
 
+    let identity = crate::commands::encrypt::load_identity(identity_path)?;
     let mut file = OpenOptions::new().create(true).append(true).open(path)?;
     let json = serde_json::to_string(obs)?;
-    let encrypted = crate::commands::encrypt::encrypt_line(&json, identity_path)?;
+    let encrypted = crate::commands::encrypt::encrypt_with(&json, &identity)?;
     writeln!(file, "{}", encrypted)?;
 
     Ok(())

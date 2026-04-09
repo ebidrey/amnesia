@@ -124,6 +124,9 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    let identity_path = config::age_identity_path();
+    commands::encrypt::ensure_identity(&identity_path)?;
+
     if cli.command.is_none() {
         tui::run()?;
         return Ok(());
@@ -133,8 +136,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let store_path = resolve_store_path(&config, cli.project.as_deref());
     let command = cli.command.unwrap();
 
-    let identity_path = config::age_identity_path();
-    commands::encrypt::ensure_identity(&identity_path)?;
     let id_path = Some(identity_path.as_path());
 
     match command {

@@ -48,12 +48,11 @@ pub fn load_identity(identity_path: &Path) -> Result<x25519::Identity, Box<dyn s
     Err("no AGE-SECRET-KEY found in identity file".into())
 }
 
-/// Encrypt a plaintext string using the age identity's public key. Returns base64.
-pub fn encrypt_line(
+/// Encrypt a plaintext string using the given identity's public key. Returns base64.
+pub fn encrypt_with(
     plaintext: &str,
-    identity_path: &Path,
+    identity: &x25519::Identity,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let identity = load_identity(identity_path)?;
     let recipient = identity.to_public();
 
     let encryptor = age::Encryptor::with_recipients(std::iter::once(&recipient as &dyn age::Recipient))?;
@@ -66,16 +65,15 @@ pub fn encrypt_line(
     Ok(STANDARD.encode(&encrypted))
 }
 
-/// Decrypt a base64-encoded age ciphertext. Returns the plaintext string.
-pub fn decrypt_line(
+/// Decrypt a base64-encoded age ciphertext using the given identity. Returns the plaintext string.
+pub fn decrypt_with(
     ciphertext_b64: &str,
-    identity_path: &Path,
+    identity: &x25519::Identity,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let identity = load_identity(identity_path)?;
     let ciphertext = STANDARD.decode(ciphertext_b64)?;
 
     let decryptor = age::Decryptor::new_buffered(&ciphertext[..])?;
-    let mut reader = decryptor.decrypt(std::iter::once(&identity as &dyn age::Identity))?;
+    let mut reader = decryptor.decrypt(std::iter::once(identity as &dyn age::Identity))?;
     let mut plaintext = String::new();
     reader.read_to_string(&mut plaintext)?;
 
@@ -85,6 +83,22 @@ pub fn decrypt_line(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn encrypt_line(
+        plaintext: &str,
+        identity_path: &Path,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let identity = load_identity(identity_path)?;
+        encrypt_with(plaintext, &identity)
+    }
+
+    fn decrypt_line(
+        ciphertext_b64: &str,
+        identity_path: &Path,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let identity = load_identity(identity_path)?;
+        decrypt_with(ciphertext_b64, &identity)
+    }
     use tempfile::tempdir;
 
     #[test]
