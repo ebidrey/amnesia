@@ -17,8 +17,15 @@ pub struct SearchArgs {
     pub session_id: Option<String>,
 }
 
-pub fn run(args: SearchArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let observations = store::load_from(store_path)?;
+pub fn run(
+    args: SearchArgs,
+    store_path: &Path,
+    identity_path: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let observations = match identity_path {
+        Some(id) => store::load_encrypted(store_path, id)?,
+        None => store::load_from(store_path)?,
+    };
 
     let filtered = filter::apply(observations, &FilterOptions {
         agent: args.agent,
@@ -155,7 +162,7 @@ mod tests {
     #[test]
     fn no_matching_query_runs_ok() {
         let file = setup();
-        assert!(run(args(Some("xyznonexistentterm")), file.path()).is_ok());
+        assert!(run(args(Some("xyznonexistentterm")), file.path(), None).is_ok());
     }
 
     #[test]
@@ -188,13 +195,13 @@ mod tests {
     #[test]
     fn empty_store_runs_ok() {
         let file = NamedTempFile::new().unwrap();
-        assert!(run(args(Some("anything")), file.path()).is_ok());
+        assert!(run(args(Some("anything")), file.path(), None).is_ok());
     }
 
     #[test]
     fn no_query_returns_newest_first() {
         let file = setup();
-        assert!(run(args(None), file.path()).is_ok());
+        assert!(run(args(None), file.path(), None).is_ok());
 
         let mut observations = store::load_from(file.path()).unwrap();
         observations.sort_by(|a, b| b.id.cmp(&a.id));
@@ -213,6 +220,7 @@ mod tests {
                 session_id: None,
             },
             file.path(),
+            None,
         );
         assert!(result.is_ok());
 
@@ -234,6 +242,7 @@ mod tests {
                 session_id: None,
             },
             file.path(),
+            None,
         );
         assert!(result.is_ok());
 

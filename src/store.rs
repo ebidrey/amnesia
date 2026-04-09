@@ -46,6 +46,53 @@ pub fn append_to(path: &Path, obs: &Observation) -> StoreResult<()> {
     Ok(())
 }
 
+// --- encrypted variants ----------------------------------------------------
+
+pub fn load_encrypted(path: &Path, identity_path: &Path) -> StoreResult<Vec<Observation>> {
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+
+    let identity = crate::commands::encrypt::load_identity(identity_path)?;
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut observations = Vec::new();
+
+    for line in reader.lines() {
+        let line = line?;
+        if line.is_empty() {
+            continue;
+        }
+
+        let json = if line.starts_with('{') {
+            line // backward compat: plaintext JSON
+        } else {
+            crate::commands::encrypt::decrypt_with(&line, &identity)?
+        };
+
+        let obs: Observation = serde_json::from_str(&json)?;
+        observations.push(obs);
+    }
+
+    Ok(observations)
+}
+
+pub fn append_encrypted(
+    path: &Path,
+    obs: &Observation,
+    identity_path: &Path,
+) -> StoreResult<()> {
+    ensure_parent(path)?;
+
+    let identity = crate::commands::encrypt::load_identity(identity_path)?;
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+    let json = serde_json::to_string(obs)?;
+    let encrypted = crate::commands::encrypt::encrypt_with(&json, &identity)?;
+    writeln!(file, "{}", encrypted)?;
+
+    Ok(())
+}
+
 // ----------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -137,6 +184,44 @@ mod tests {
 
         let result = load_from(file.path());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn encrypted_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let key_path = dir.path().join("test.key");
+        crate::commands::encrypt::ensure_identity(&key_path).unwrap();
+
+        let store_path = dir.path().join("store.ndjson");
+        let obs = sample("01A", OpType::Bugfix);
+
+        append_encrypted(&store_path, &obs, &key_path).unwrap();
+
+        let loaded = load_encrypted(&store_path, &key_path).unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0], obs);
+
+        // Verify on-disk content is not plaintext
+        let raw = std::fs::read_to_string(&store_path).unwrap();
+        assert!(!raw.contains("Test observation"));
+    }
+
+    #[test]
+    fn encrypted_load_reads_plaintext_lines() {
+        let dir = tempfile::tempdir().unwrap();
+        let key_path = dir.path().join("test.key");
+        crate::commands::encrypt::ensure_identity(&key_path).unwrap();
+
+        let store_path = dir.path().join("store.ndjson");
+        let obs = sample("01A", OpType::Bugfix);
+
+        // Write plaintext
+        append_to(&store_path, &obs).unwrap();
+
+        // Encrypted load handles plaintext via backward compat
+        let loaded = load_encrypted(&store_path, &key_path).unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0], obs);
     }
 
     #[test]

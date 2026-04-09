@@ -1,4 +1,6 @@
+pub mod encrypt;
 pub mod get;
+pub mod migrate;
 pub mod projects;
 pub mod recent;
 pub mod save;

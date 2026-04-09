@@ -16,7 +16,11 @@ pub struct SaveArgs {
     pub session_id: Option<String>,
 }
 
-pub fn run(args: SaveArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    args: SaveArgs,
+    store_path: &Path,
+    identity_path: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let obs = Observation {
         id: Ulid::new().to_string(),
         timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
@@ -29,7 +33,10 @@ pub fn run(args: SaveArgs, store_path: &Path) -> Result<(), Box<dyn std::error::
         session_id: args.session_id,
     };
 
-    store::append_to(store_path, &obs)?;
+    match identity_path {
+        Some(id) => store::append_encrypted(store_path, &obs, id)?,
+        None => store::append_to(store_path, &obs)?,
+    }
     println!("saved {}", obs.id);
     Ok(())
 }
@@ -52,6 +59,7 @@ mod tests {
                 session_id: None,
             },
             file.path(),
+            None,
         )
         .unwrap();
     }
@@ -155,6 +163,7 @@ mod tests {
                 session_id: Some(sid.clone()),
             },
             file.path(),
+            None,
         )
         .unwrap();
 

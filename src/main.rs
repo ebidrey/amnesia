@@ -112,6 +112,9 @@ enum Command {
         #[arg(short = 'n', default_value_t = 10)]
         n: usize,
     },
+
+    /// Encrypt all plaintext lines in the store
+    Migrate,
 }
 
 fn main() {
@@ -124,6 +127,9 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    let identity_path = config::age_identity_path();
+    commands::encrypt::ensure_identity(&identity_path)?;
+
     if cli.command.is_none() {
         tui::run()?;
         return Ok(());
@@ -131,8 +137,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = config::load();
     let store_path = resolve_store_path(&config, cli.project.as_deref());
+    let command = cli.command.unwrap();
 
-    match cli.command.unwrap() {
+    let id_path = Some(identity_path.as_path());
+
+    match command {
         Command::Save { agent, op_type, title, content, files, tags, session } => {
             let session_id = session.or_else(|| std::env::var("AMNESIA_SESSION").ok().filter(|s| !s.is_empty()));
             commands::save::run(
@@ -146,6 +155,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     session_id,
                 },
                 &store_path,
+                id_path,
             )?;
         }
 
@@ -162,19 +172,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     session_id: session,
                 },
                 &store_path,
+                id_path,
             )?;
         }
 
         Command::Get { id } => {
-            commands::get::run(GetArgs { id_prefix: id }, &store_path)?;
+            commands::get::run(GetArgs { id_prefix: id }, &store_path, id_path)?;
         }
 
         Command::Recent { n, agent, session } => {
-            commands::recent::run(RecentArgs { n, agent, session_id: session }, &store_path)?;
+            commands::recent::run(RecentArgs { n, agent, session_id: session }, &store_path, id_path)?;
         }
 
         Command::Stats => {
-            commands::stats::run(&store_path)?;
+            commands::stats::run(&store_path, id_path)?;
         }
 
         Command::Projects => {
@@ -184,6 +195,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Command::Sessions { n } => {
             let sessions_path = resolve_sessions_path(cli.project.as_deref())?;
             commands::sessions::run(SessionsArgs { n }, &sessions_path)?;
+        }
+
+        Command::Migrate => {
+            commands::migrate::run(&store_path, &identity_path)?;
         }
     }
 

@@ -9,8 +9,15 @@ pub struct RecentArgs {
     pub session_id: Option<String>,
 }
 
-pub fn run(args: RecentArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let mut observations = store::load_from(store_path)?;
+pub fn run(
+    args: RecentArgs,
+    store_path: &Path,
+    identity_path: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut observations = match identity_path {
+        Some(id) => store::load_encrypted(store_path, id)?,
+        None => store::load_from(store_path)?,
+    };
 
     if let Some(agent) = &args.agent {
         observations.retain(|o| &o.agent == agent);
@@ -91,7 +98,7 @@ mod tests {
         assert_eq!(observations[2].id, "01JNAAAA");
 
         // run doesn't panic
-        run(args, file.path()).unwrap();
+        run(args, file.path(), None).unwrap();
     }
 
     #[test]
@@ -122,7 +129,7 @@ mod tests {
         ]);
 
         let args = RecentArgs { n: 10, agent: Some("backend-developer".to_string()), session_id: None };
-        run(args, file.path()).unwrap();
+        run(args, file.path(), None).unwrap();
 
         let mut observations = store::load_from(file.path()).unwrap();
         observations.retain(|o| o.agent == "backend-developer");
@@ -133,7 +140,7 @@ mod tests {
     fn empty_store_returns_ok() {
         let file = NamedTempFile::new().unwrap();
         let args = RecentArgs { n: 10, agent: None, session_id: None };
-        assert!(run(args, file.path()).is_ok());
+        assert!(run(args, file.path(), None).is_ok());
     }
 
     #[test]
@@ -166,7 +173,7 @@ mod tests {
         ]);
 
         let args = RecentArgs { n: 10, agent: None, session_id: Some(sid.clone()) };
-        run(args, file.path()).unwrap();
+        run(args, file.path(), None).unwrap();
 
         let mut observations = store::load_from(file.path()).unwrap();
         observations.retain(|o| o.session_id.as_deref() == Some(&sid));
