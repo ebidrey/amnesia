@@ -5,8 +5,11 @@ use crate::store;
 
 const COL: usize = 10;
 
-pub fn run(store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let observations = store::load_from(store_path)?;
+pub fn run(store_path: &Path, identity_path: Option<&Path>) -> Result<(), Box<dyn std::error::Error>> {
+    let observations = match identity_path {
+        Some(id) => store::load_encrypted(store_path, id)?,
+        None => store::load_from(store_path)?,
+    };
 
     // total
     println!("{:<COL$}{} observations", "total:", observations.len());
@@ -97,13 +100,13 @@ mod tests {
     #[test]
     fn empty_store_runs_without_error() {
         let file = NamedTempFile::new().unwrap();
-        assert!(run(file.path()).is_ok());
+        assert!(run(file.path(), None).is_ok());
     }
 
     #[test]
     fn nonexistent_store_runs_without_error() {
         let path = Path::new("/tmp/amnesia_stats_nonexistent_xyz.ndjson");
-        assert!(run(path).is_ok());
+        assert!(run(path, None).is_ok());
     }
 
     #[test]

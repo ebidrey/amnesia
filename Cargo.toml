@@ -13,6 +13,7 @@ clap       = { version = "4", features = ["derive"] }
 ratatui    = "0.29"
 crossterm  = "0.28"
 age        = "0.11"
+base64     = "0.22"
 
 [[bin]]
 name = "amnesia"

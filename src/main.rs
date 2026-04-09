@@ -133,7 +133,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let store_path = resolve_store_path(&config, cli.project.as_deref());
     let command = cli.command.unwrap();
 
-    commands::encrypt::ensure_identity(&config::age_identity_path())?;
+    let identity_path = config::age_identity_path();
+    commands::encrypt::ensure_identity(&identity_path)?;
+    let id_path = Some(identity_path.as_path());
 
     match command {
         Command::Save { agent, op_type, title, content, files, tags, session } => {
@@ -149,6 +151,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     session_id,
                 },
                 &store_path,
+                id_path,
             )?;
         }
 
@@ -165,19 +168,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     session_id: session,
                 },
                 &store_path,
+                id_path,
             )?;
         }
 
         Command::Get { id } => {
-            commands::get::run(GetArgs { id_prefix: id }, &store_path)?;
+            commands::get::run(GetArgs { id_prefix: id }, &store_path, id_path)?;
         }
 
         Command::Recent { n, agent, session } => {
-            commands::recent::run(RecentArgs { n, agent, session_id: session }, &store_path)?;
+            commands::recent::run(RecentArgs { n, agent, session_id: session }, &store_path, id_path)?;
         }
 
         Command::Stats => {
-            commands::stats::run(&store_path)?;
+            commands::stats::run(&store_path, id_path)?;
         }
 
         Command::Projects => {

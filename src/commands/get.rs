@@ -9,8 +9,15 @@ pub struct GetArgs {
     pub id_prefix: String,
 }
 
-pub fn run(args: GetArgs, store_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let observations = store::load_from(store_path)?;
+pub fn run(
+    args: GetArgs,
+    store_path: &Path,
+    identity_path: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let observations = match identity_path {
+        Some(id) => store::load_encrypted(store_path, id)?,
+        None => store::load_from(store_path)?,
+    };
 
     let obs = observations
         .iter()
@@ -87,7 +94,7 @@ mod tests {
         store::append_to(file.path(), &obs).unwrap();
 
         let args = GetArgs { id_prefix: "01JNABCDEFGHIJKLMNOPQRSTUV".to_string() };
-        assert!(run(args, file.path()).is_ok());
+        assert!(run(args, file.path(), None).is_ok());
     }
 
     #[test]
@@ -97,7 +104,7 @@ mod tests {
         store::append_to(file.path(), &obs).unwrap();
 
         let args = GetArgs { id_prefix: "01JNAB".to_string() };
-        assert!(run(args, file.path()).is_ok());
+        assert!(run(args, file.path(), None).is_ok());
     }
 
     #[test]
@@ -107,7 +114,7 @@ mod tests {
         store::append_to(file.path(), &obs).unwrap();
 
         let args = GetArgs { id_prefix: "01ZZZZZZ".to_string() };
-        let result = run(args, file.path());
+        let result = run(args, file.path(), None);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("no observation found"));
     }
@@ -116,7 +123,7 @@ mod tests {
     fn returns_error_on_empty_store() {
         let file = NamedTempFile::new().unwrap();
         let args = GetArgs { id_prefix: "01JNAAAA".to_string() };
-        assert!(run(args, file.path()).is_err());
+        assert!(run(args, file.path(), None).is_err());
     }
 
     #[test]
@@ -149,6 +156,6 @@ mod tests {
         store::append_to(file.path(), &obs).unwrap();
 
         let args = GetArgs { id_prefix: "01JNAB".to_string() };
-        assert!(run(args, file.path()).is_ok());
+        assert!(run(args, file.path(), None).is_ok());
     }
 }
