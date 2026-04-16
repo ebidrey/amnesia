@@ -115,6 +115,17 @@ enum Command {
 
     /// Encrypt all plaintext lines in the store
     Migrate,
+
+    /// Install amnesia skill files and config snippets
+    Install {
+        /// Only check whether files are up to date (exit 1 if not)
+        #[arg(long)]
+        check: bool,
+
+        /// Overwrite existing installations with latest version
+        #[arg(long)]
+        update: bool,
+    },
 }
 
 fn main() {
@@ -135,9 +146,22 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
+    let command = cli.command.unwrap();
+
+    // Install operates on editor config files, not the store.
+    if let Command::Install { check, update } = command {
+        let mode = if check {
+            commands::install::Mode::Check
+        } else if update {
+            commands::install::Mode::Update
+        } else {
+            commands::install::Mode::Install
+        };
+        return commands::install::run(mode);
+    }
+
     let config = config::load();
     let store_path = resolve_store_path(&config, cli.project.as_deref());
-    let command = cli.command.unwrap();
 
     let id_path = Some(identity_path.as_path());
 
@@ -200,6 +224,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Command::Migrate => {
             commands::migrate::run(&store_path, &identity_path)?;
         }
+
+        Command::Install { .. } => unreachable!("handled above"),
     }
 
     Ok(())
