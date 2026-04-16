@@ -13,7 +13,7 @@ Goldfish: Often cited for having very poor, short-term memory.
 
 Every time you start a new session with an AI coding agent, it starts completely blank. It has no idea what decisions were made last week, what bugs were fixed yesterday, or what patterns the team agreed on. It will rediscover the same things, make the same mistakes, and ask the same questions - over and over.
 
-`amnesia` is a small command-line tool that gives agents a place to write down what they learn and look it up later. It is a single binary, writes to plain text files, and requires no running process. Agents call it through the shell, the same way they run `git` or `grep`.
+`amnesia` is a small command-line tool that gives agents a place to write down what they learn and look it up later. It is a single binary, stores observations encrypted-at-rest in an NDJSON-backed file, and requires no running process. Agents call it through the shell, the same way they run `git` or `grep`.
 
 That is the whole thing.
 
@@ -34,10 +34,10 @@ content:   chrono::Local::now() was compared against the exp claim which is
            UTC-5 environments.
 files:     src/auth/jwt.rs                  files involved (optional)
 tags:      auth, jwt, timezone              free-form tags (optional)
-session_id: 01KK7V16Q9V8NMSYP7JZS1F2BX      session that produced it (optional)
+session:   01KK7V16Q9V8NMSYP7JZS1F2BX      session that produced it (optional)
 ```
 
-`search` and `recent` show a compact view - id, agent, type, timestamp, and title. The `content` field is intentionally omitted to keep token usage low. Use `amnesia get <id>` to read the full content of any observation.
+`search` and `recent` show a compact view - id, agent, type, timestamp, and title (plus optional `session`/`files` when present). The `content` field is intentionally omitted to keep token usage low. Use `amnesia get <id>` to read the full content of any observation.
 
 An observation has six types, each with a clear meaning:
 
@@ -59,10 +59,11 @@ That's the data model. One observation per event, one line in a file.
 **Simple by design.**
 
 - One binary. No daemon, no server, no MCP, no database engine.
-- Plain text files: NDJSON, one observation per line. Open it in any editor.
+- Encrypted-at-rest storage by default (age). Data is decrypted only in-process when commands run.
+- NDJSON-backed model: one logical observation per stored line.
 - Agents call it via shell. Zero framework overhead, zero extra context tokens consumed.
 - BM25 full-text search built in. No embeddings, no vector store, no API key needed.
-- Human-readable storage. You can `grep` it, `cat` it, back it up with `cp`, inspect it with `jq`.
+- File-based storage. Back it up with `cp`, rotate it with normal filesystem tools, and migrate legacy plaintext with `amnesia migrate`.
 
 The goal is a tool so simple that there is no reason not to use it. Every feature that adds complexity is a reason for an agent (or a developer) to skip it.
 
@@ -101,7 +102,7 @@ cargo install --path .
 ~/.cargo/bin/amnesia stats
 ```
 
-The store file is created automatically on the first `amnesia save`.
+The store file is created automatically on the first `amnesia save`. An encryption key is also created automatically at `~/.amnesia/keys/amnesia.key` if missing.
 
 ---
 
@@ -113,7 +114,9 @@ Run `amnesia` with no subcommand to open the interactive TUI launcher:
 amnesia
 ```
 
-It prompts you to select a **project** (from `~/.amnesia/projects.toml`) and an **orchestrator** (Claude, OpenCode, Cursor, Aider, Goose), then launches the orchestrator with `AMNESIA_PROJECT` and `AMNESIA_SESSION` set in the environment.
+The TUI has three tabs: **Launch**, **Databases**, and **About**.
+
+In the **Launch** flow, it prompts you to select a **project** (from `~/.amnesia/projects.toml`), an **orchestrator** (Claude, OpenCode, Cursor, Aider, Goose), and then a **session** (new or existing). It then launches the orchestrator with `AMNESIA_PROJECT` and `AMNESIA_SESSION` set in the environment.
 
 From that point on, every `amnesia save` inside that orchestrator session is automatically scoped to the project and tagged with the session ID - no extra flags required.
 
@@ -121,7 +124,7 @@ From that point on, every `amnesia save` inside that orchestrator session is aut
 
 ## Project-scoped storage
 
-When `AMNESIA_PROJECT` is set, all commands read and write to a project-specific store instead of the global one:
+When `AMNESIA_PROJECT` is set, store-backed commands read and write to a project-specific store instead of the global one:
 
 ```
 ~/.amnesia/projects/<name>/store.ndjson
@@ -132,7 +135,7 @@ The global store (`~/.amnesia/store.ndjson`) is still used when `AMNESIA_PROJECT
 You can select a project in three ways, in order of precedence:
 
 ```bash
-# 1. --project flag (any subcommand)
+# 1. --project flag (store-related subcommands)
 amnesia search --project myproject "authentication"
 amnesia --project myproject recent -n 5
 amnesia --project myproject sessions
@@ -204,13 +207,14 @@ amnesia search --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 amnesia search
 ```
 
-Output is compact - titles only, no content:
+Output is compact - no content body (and includes `session` / `files` only when present):
 ```
 id:        01JNAAAA0000000000000000AA
 agent:     backend-developer
 type:      bugfix
 timestamp: 2026-03-07T14:23:01Z
 title:     JWT expiry check was using local time instead of UTC
+files:     src/auth/jwt.rs
 
 id:        01JN99990000000000000000ZZ
 agent:     api-designer
@@ -234,7 +238,7 @@ amnesia get 01JNAAAA        # read full content only for the relevant ones
 amnesia get 01JNAAAA
 ```
 
-Any unambiguous prefix of the ULID works.
+Any ULID prefix works.
 
 Output:
 ```
@@ -254,7 +258,7 @@ tags:      auth, jwt, timezone
 
 ### `recent` - last N observations
 
-Same compact format as `search` - titles only. Use `amnesia get <id>` for full content.
+Same compact format as `search` - no content body (and optional `session`/`files` fields when present). Use `amnesia get <id>` for full content.
 
 ```bash
 # last 10 across all agents
@@ -271,7 +275,7 @@ amnesia recent --session 01KK7V16Q9V8NMSYP7JZS1F2BX
 
 ### `sessions` - list recent sessions
 
-Requires `AMNESIA_PROJECT` to be set.
+Requires project context via `--project` or `AMNESIA_PROJECT`.
 
 ```bash
 AMNESIA_PROJECT=myproject amnesia sessions
@@ -323,8 +327,21 @@ agents:   backend-developer (23), api-designer (12), orchestrator (12)
 types:    decision (18), bugfix (14), discovery (9), pattern (4), warning (2)
 oldest:   2026-01-15
 newest:   2026-03-07
-file:     ~/.amnesia/store.ndjson (84 KB)
+file:     /Users/you/.amnesia/store.ndjson (84KB)
 ```
+
+---
+
+### `migrate` - encrypt legacy plaintext lines
+
+Encrypts plaintext JSON lines in the store in place. Already encrypted lines are left unchanged.
+
+```bash
+amnesia migrate
+amnesia --project myproject migrate
+```
+
+Useful when upgrading from older plaintext stores.
 
 ---
 
@@ -471,11 +488,15 @@ default_limit = 10
 
 ### Observations
 
-Stored as NDJSON - one JSON object per line:
+`amnesia` uses encrypted lines at rest by default. Logically, each line represents one observation with this JSON schema:
 
 ```json
 {"id":"01JNAAAA0000000000000000AA","timestamp":"2026-03-07T14:23:01Z","agent":"backend-developer","op_type":"Bugfix","title":"JWT expiry check used local time instead of UTC","content":"...","files":["src/auth/jwt.rs"],"tags":["auth","jwt","timezone"]}
 ```
+
+On disk, each line is stored as base64-encoded age ciphertext (not plaintext JSON).
+
+Legacy plaintext lines are still readable for backward compatibility and can be encrypted in place with `amnesia migrate`.
 
 `session_id` is included only when the observation was saved with a session:
 
@@ -496,13 +517,13 @@ Stored separately in `~/.amnesia/projects/<name>/sessions.ndjson`:
 - IDs are [ULIDs](https://github.com/ulid/spec) - lexicographically sortable, unique, collision-free.
 - Append-only. `save` only adds a line, never rewrites the file.
 - Append is atomic on most filesystems - safe for concurrent writes from parallel agents.
-- No automatic pruning. The file grows over time. Back it up, inspect it, `grep` it - it is just text.
+- No automatic pruning. The file grows over time. Back it up and inspect it at the file level.
 
 ---
 
 ## How search works
 
-Search uses [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) ranking, built in-memory at query time. No persistent index. The store is read once per invocation and indexed on the fly. Fast enough for thousands of observations and trivially simple to maintain.
+Search uses [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) ranking, built in-memory at query time. No persistent index. The store is read (and decrypted in-process) once per invocation and indexed on the fly. Fast enough for thousands of observations and trivially simple to maintain.
 
 Field weights:
 
@@ -512,7 +533,7 @@ Field weights:
 | tags | 1.5 |
 | content | 1.0 |
 
-When no query is given, results are returned newest-first by timestamp.
+When no query is given, results are returned newest-first by ULID creation order (id descending).
 
 ---
 
@@ -524,14 +545,26 @@ The codebase is intentionally small. Every module has inline `#[cfg(test)]` unit
 src/
   main.rs          CLI entry point (clap)
   model.rs         Observation + Session structs, OpType enum
-  store.rs         NDJSON read / append for observations (path-parametric)
+  store.rs         encrypted/legacy read + encrypted append for observations
   sessions.rs      NDJSON read / append for sessions
   bm25.rs          BM25 implementation (~100 lines)
   filter.rs        agent / type / date / files / session filters
   config.rs        config.toml loading, project path helpers
-  launcher.rs      TUI launcher: project + orchestrator selector
   projects.rs      projects.toml loading
+  tui.rs           TUI entry point
+  tui/
+    app.rs
+    events.rs
+    ui.rs
+  templates/
+    claude_skill.md
+    opencode_skill.md
+    claude_md_snippet.md
+    agents_md_snippet.md
   commands/
+    encrypt.rs
+    migrate.rs
+    install.rs
     save.rs
     search.rs
     get.rs
