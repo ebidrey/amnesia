@@ -328,9 +328,45 @@ file:     ~/.amnesia/store.ndjson (84 KB)
 
 ---
 
-## Integrating with Claude
+### `install` - set up agent integration
 
-The real value comes from teaching your AI agent to use `amnesia` consistently. Add these instructions to your `~/.claude/CLAUDE.md` file:
+Writes the bundled `SKILL.md` into the standard locations for Claude Code and OpenCode, and injects a marker-bounded memory snippet into `CLAUDE.md` / `AGENTS.md`. Targets:
+
+| Target | Path |
+|--------|------|
+| Claude Code skill | `~/.claude/skills/amnesia/SKILL.md` |
+| OpenCode skill | `~/.config/opencode/skills/amnesia/SKILL.md` |
+| Claude Code instructions | `~/.claude/CLAUDE.md` |
+| OpenCode instructions | `~/.config/opencode/AGENTS.md` |
+
+```bash
+# install missing files; leave existing ones alone
+amnesia install
+
+# overwrite existing skill files and snippets with the bundled version
+amnesia install --update
+
+# report status only; exit 1 if anything is missing or outdated
+amnesia install --check
+```
+
+The injected snippet is wrapped between markers so re-running `--update` only rewrites that block and leaves the rest of your `CLAUDE.md` / `AGENTS.md` untouched:
+
+```
+[//]: # (BEGIN:amnesia)
+...
+[//]: # (END:amnesia)
+```
+
+If `CLAUDE.md` or `AGENTS.md` does not exist, it is created with just the snippet. Skill templates differ per platform because OpenCode and Claude Code recognize different frontmatter fields.
+
+---
+
+## Integrating with AI agents
+
+The real value comes from teaching your AI agent to use `amnesia` consistently. The fastest path is `amnesia install` (see above) — it sets up Claude Code and OpenCode in one shot.
+
+If you prefer to wire it up by hand, add these instructions to your `~/.claude/CLAUDE.md` (or `~/.config/opencode/AGENTS.md`):
 
 ```markdown
 ## Memory
@@ -350,12 +386,6 @@ discovering something non-obvious, establishing a pattern, or ending a session.
 sessions left relevant context.
 
 **Never skip saving** after a session with meaningful output.
-```
-
-Or install the included Claude Code skill:
-
-```bash
-cp -r skills/amnesia ~/.claude/skills/amnesia
 ```
 
 ### What agents should save
