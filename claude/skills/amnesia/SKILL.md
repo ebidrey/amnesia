@@ -79,6 +79,25 @@ required. Cover: what was done, why, and what state things were left in.
 The agent CANNOT detect session end (Ctrl+D kills the process instantly). Task
 summaries are the only safety net — do not skip them.
 
+### Conversational decisions — highest priority
+
+Design discussions and planning conversations are the **most critical** things to
+save because they leave NO artifact. Code has git. Decisions only live in context.
+
+When the user says any of the following, the NEXT tool call must be `amnesia save`:
+
+- "let's go with X", "I prefer Y", "use Z instead"
+- "no, not that", "skip that", "we don't need X"
+- "the plan is...", "we'll do it in phases", "first X then Y"
+- "only touch these files", "leave that for later"
+- Any scope, architecture, or tradeoff discussion that reaches a conclusion
+
+Do NOT wait until the decision is "implemented" to save it. Save the decision
+the moment it is made. Implementation may never happen if the session dies.
+
+**Test: if the session crashed RIGHT NOW, would a new agent know what was decided?
+If not, you haven't saved enough.**
+
 ### Save vs. skip — concrete examples
 
 ```
